@@ -4,6 +4,7 @@ import org.qirx.littlespec.Specification
 import org.qirx.littlespec.Fragment.ThrowableFailure
 import org.qirx.littlespec.Assertion
 import org.qirx.littlespec.Fragment
+import testUtils.beAFailure
 
 object BasicAssertEnhancementsSpec extends Specification {
 
@@ -12,7 +13,7 @@ object BasicAssertEnhancementsSpec extends Specification {
     "have an 'is' enhancement" - {
 
       "that throws a failure exception when the values are not equal" - {
-        (1 is 2) must throwA[ThrowableFailure]
+        (1 is 2) must beAFailure
       }
 
       "that returns success when the values are equal" - {
@@ -23,7 +24,7 @@ object BasicAssertEnhancementsSpec extends Specification {
     "have an 'isLike' enhancement" - {
 
       "that throws a failure exception when the partial function does is not defined" - {
-        (1 isLike { case 2 => success }) must throwA[ThrowableFailure]
+        (1 isLike { case 2 => success }) must beAFailure
       }
 
       "that returns the result of the partial function if it's defined" - {
@@ -40,7 +41,7 @@ object BasicAssertEnhancementsSpec extends Specification {
               Left(s + " - failure")
           }
 
-        ("test" must assertion) must throwA[ThrowableFailure].like {
+        ("test" must assertion) must beAFailure.like {
           case ThrowableFailure(message) => message is "test - failure"
           case _ => failure("no exception was thrown")
         }
@@ -52,6 +53,16 @@ object BasicAssertEnhancementsSpec extends Specification {
             def assert(s: => String): Either[String, Fragment.Body] =
               Right(success)
           }
+        ("test" must assertion) is success
+      }
+
+      "that accepts different assertion types as long as there is an implicit conversion" - {
+        val assertion =
+          new Assertion[Seq[Char]] {
+            def assert(s: => Seq[Char]): Either[String, Fragment.Body] =
+              Right(success)
+          }
+
         ("test" must assertion) is success
       }
     }

@@ -9,7 +9,7 @@ object ThrowingAssertionsSpec extends Specification {
     "have a throwA and throwAn assertion" - {
 
       "that returns some message when no exception was thrown" - {
-        val expected = Left("Expected CustomException")
+        val expected = Left("Expected 'CustomException' but no exception was thrown")
         throwA[CustomException].assert() is expected
         throwAn[CustomException].assert() is expected
       }
@@ -32,7 +32,7 @@ object ThrowingAssertionsSpec extends Specification {
       "that can be enhanced with a function passed to the like method which" - {
 
         "returns some message when no exception was thrown" - {
-          val expected = Left("Expected CustomException")
+          val expected = Left("Expected 'CustomException' but no exception was thrown")
 
           throwA[CustomException].like {
             case CustomException(message) =>

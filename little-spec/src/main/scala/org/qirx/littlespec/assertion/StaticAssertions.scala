@@ -6,5 +6,5 @@ trait StaticAssertions {
   def success = Fragment.Body.Success
   val todo = Fragment.Body.Todo
   def pending(message:String) = Fragment.Body.Pending(message)
-  def failure(message: String) = throw Fragment.ThrowableFailure(message)
+  def failure(message: String):Fragment.Body = throw Fragment.ThrowableFailure(message)
 }

@@ -25,8 +25,9 @@ trait ThrowingAssertions { self: StaticAssertions =>
     private def runCode(code: => Any, handler: E => Fragment.Body) =
       try {
         code
-        val c = implicitly[ClassTag[E]]
-        Left("Expected " + c.runtimeClass.getSimpleName)
+        val expectedClass = implicitly[ClassTag[E]].runtimeClass
+        val expectedName = expectedClass.getSimpleName
+        Left(s"Expected '$expectedName' but no exception was thrown")
       } catch {
         case e: E => Right(handler(e))
       }

@@ -13,7 +13,7 @@ trait BasicAssertEnhancements { self: StaticAssertions =>
   }
 
   implicit class MustEnhancement[A](result: => A) {
-    def must[B >: A](assertion: => Assertion[B]): Fragment.Body =
+    def must[B](assertion: => Assertion[B])(implicit ev:A => B): Fragment.Body =
       assertion.assert(result) match {
         case Right(body) => body
         case Left(message) => failure(message)

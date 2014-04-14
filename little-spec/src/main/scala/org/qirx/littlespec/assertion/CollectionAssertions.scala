@@ -4,11 +4,52 @@ import scala.collection.Iterable
 import org.qirx.littlespec.Assertion
 import scala.reflect.ClassTag
 import org.qirx.littlespec.Fragment
+import scala.collection.mutable.WrappedArray
+import scala.collection.mutable.ArrayOps
+import scala.util.Try
 
 trait CollectionAssertions {
-  def contain[T: ClassTag](matcher: PartialFunction[Any, Unit]): Assertion[T] =
-    new Assertion[T] {
-      def assert(s: => T): Either[String, Fragment.Body] =
-        Left("not implemented CollectionAssertions.contain")
+
+  def contain(method: PartialFunction[Any, Fragment.Body]): Assertion[Iterable[_]] =
+    new Assertion[Iterable[_]] {
+      def assert(collection: => Iterable[_]): Either[String, Fragment.Body] = {
+
+        val (lastFailure, result) =
+          findLastFailureAndResult(collection.iterator)
+
+        result
+          .toRight("Could not find element that matches the given pattern")
+          .left
+          .map { message =>
+            lastFailure
+              .map("Could not find element, last failure: " + _)
+              .getOrElse(message)
+          }
+      }
+
+      private def findLastFailureAndResult(iterator: Iterator[_]) = {
+
+        type Result = Option[Fragment.Body]
+        type Failure = Option[String]
+
+        def find(iterator: Iterator[_], failure: Failure): (Failure, Result) =
+          if (iterator.hasNext) {
+            val (newFailure, result) = execute(iterator.next)
+            if (result.isDefined) None -> result
+            else find(iterator, newFailure)
+          } else failure -> None
+
+        def execute(elem: Any): (Failure, Result) =
+          if (method.isDefinedAt(elem))
+            Try(method(elem))
+              .map(result => None -> Some(result))
+              .recover {
+                case Fragment.ThrowableFailure(message) =>
+                  Some(message) -> None
+              }.get
+          else None -> None
+
+        find(iterator, None)
+      }
     }
 }

@@ -1,5 +1,7 @@
 package org.qirx.littlespec.assertion
 
+import org.qirx.littlespec.Fragment
+
 trait NumericAssertEnhancements { self: StaticAssertions =>
 
   implicit class NummericAssertEnhancements[A](result: => A) {
