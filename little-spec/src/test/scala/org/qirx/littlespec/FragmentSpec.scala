@@ -10,29 +10,18 @@ object FragmentSpec extends Specification {
   "DefaultFragment" - {
 
     "instantiation should" - {
+      def fakeOnFragmentCreated(f: Fragment => Unit): FragmentHandler.CancelSubscription = ???
+
       "not evaluate the code that is passed in" - {
-        new DefaultFragment(null, ???, new MockEventBus)
+        new DefaultFragment(null, ???, fakeOnFragmentCreated)
         success
       }
 
       "set the correct title" - {
         val title = "title-" + Random.nextInt
-        val section = new DefaultFragment(title, ???, new MockEventBus)
-        section.title is title
+        val fragment = new DefaultFragment(title, ???, fakeOnFragmentCreated)
+        fragment.title is title
       }
-
-      "push an event to the event bus" - {
-        val eventBus = new MockEventBus
-        val section = new DefaultFragment("", ???, eventBus)
-        eventBus.events is Seq(Fragment.Created(section))
-      }
-
-      "not respond to it's own created event" - {
-        val eventBus = new MockEventBus
-        val section = new DefaultFragment("", ???, eventBus)
-        eventBus.subscriptions is Seq.empty
-      }
-
     }
 
     "fragment body instances should" - {
@@ -51,9 +40,9 @@ object FragmentSpec extends Specification {
         isBody(unit)
       }
 
-      "have an implicit conversion for section" - {
-        val section = newFragment()
-        isBody(section)
+      "have an implicit conversion for fragment" - {
+        val fragment = newFragment()
+        isBody(fragment)
       }
     }
 
@@ -107,11 +96,14 @@ object FragmentSpec extends Specification {
         result is Failure(defaultTitle, message)
       }
 
-      "correctly handle nested sections" - {
-        val eventBus = new DefaultEventBus
+      "correctly handle nested fragments" - {
+        val eventBus = new FragmentHandler
 
-        def newFragment(title: String)(code: => Fragment.Body) =
-          new DefaultFragment(title, code, eventBus)
+        def newFragment(title: String)(code: => Fragment.Body) = {
+          val fragment = new DefaultFragment(title, code, eventBus.onFragmentCreated)
+          eventBus.fragmentCreated(fragment)
+          fragment
+        }
 
         val fragment =
           newFragment("level 1") {
@@ -152,7 +144,7 @@ object FragmentSpec extends Specification {
   val defaultTitle = "title"
 
   def newFragment(code: => Fragment.Body) =
-    new DefaultFragment(defaultTitle, code, new DefaultEventBus)
+    new DefaultFragment(defaultTitle, code, new FragmentHandler().onFragmentCreated)
 
   def isBody(body: Fragment.Body) = success
 
@@ -173,24 +165,4 @@ object FragmentSpec extends Specification {
 
       def compare(x: T, y: T): Int = x.compare(y)
     }
-
-  class MockEventBus extends EventBus {
-    class Subscription extends super.Subscription {
-      def cancel(): Unit = ()
-      def enable(): Unit = ()
-      def disable(): Unit = ()
-    }
-
-    val subscriptions = ListBuffer.empty[Subscription]
-
-    def onEvent(handler: Fragment.Event => Unit): Subscription = {
-      val subscription = new Subscription
-      subscriptions += subscription
-      subscription
-    }
-
-    val events = ListBuffer.empty[Fragment.Event]
-
-    def push(event: Fragment.Event): Unit = events += event
-  }
 }

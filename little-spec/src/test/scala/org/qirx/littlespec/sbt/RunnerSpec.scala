@@ -8,7 +8,7 @@ import org.qirx.littlespec.Specification
 
 class RunnerSpec extends Specification {
 
-  val location = new File("little-spec/specification")
+  val location = new File("little-spec/src/test/resources/testClasses")
   val testClassLoader = new URLClassLoader(Array(location.toURI.toURL), getClass.getClassLoader)
   def newRunner = new Runner(Array.empty, Array.empty, testClassLoader)
 
@@ -27,27 +27,27 @@ class RunnerSpec extends Specification {
       }
     }
 
-      "should return the correct tasks" - {
+    "should return the correct tasks" - {
 
-    		  def testTaskCreation(testClassName: String, isObject: Boolean) = {
-    			  var actualTestClassName = testClassName
-    					  if (isObject) actualTestClassName += "$"
-    					  val taskDef = TaskDefFactory.create(testClassName, isObject)
+      def testTaskCreation(testClassName: String, isObject: Boolean) = {
+        var actualTestClassName = testClassName
+        if (isObject) actualTestClassName += "$"
+        val taskDef = TaskDefFactory.create(testClassName, isObject)
 
-    					  val testClass = testClassLoader.loadClass(actualTestClassName)
-    					  .asSubclass(classOf[Specification])
+        val testClass = testClassLoader.loadClass(actualTestClassName)
+          .asSubclass(classOf[Specification])
 
-    					  val tasks = newRunner.tasks(Array(taskDef))
+        val tasks = newRunner.tasks(Array(taskDef))
 
-    					  tasks isLike {
-    					  case Array(task: Task[_]) =>
-    					  task.isObject is isObject
-    					  task.taskDef is taskDef
-    					  task.testClass is testClass
-    					  }
-    		  }
-        "for objects" - testTaskCreation("spec.EmptyObject", isObject = true)
-        "for classes" - testTaskCreation("spec.EmptyClass", isObject = false)
-  }
+        tasks isLike {
+          case Array(task: Task[_]) =>
+            task.isObject is isObject
+            task.taskDef is taskDef
+            task.testClass is testClass
+        }
+      }
+      "for objects" - testTaskCreation("test.EmptyObject", isObject = true)
+      "for classes" - testTaskCreation("test.EmptyClass", isObject = false)
     }
+  }
 }

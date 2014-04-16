@@ -1,3 +1,0 @@
-Use the following entry in the .classpath to include it in Eclipse as source:
-
-<classpathentry excluding="target/**" kind="src" output="specification" path="specification"/>

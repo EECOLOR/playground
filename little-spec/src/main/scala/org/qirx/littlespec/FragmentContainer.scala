@@ -4,32 +4,30 @@ import scala.collection.mutable.ListBuffer
 
 trait FragmentContainer {
 
-  private val _fragments = ListBuffer.empty[Fragment]
-  val fragments: Seq[Fragment] = _fragments
+  private val fragments = ListBuffer.empty[Fragment]
+  private var results: Seq[Result] = Seq.empty
+  private var executeFragmentsCalled: Boolean = false
 
-  private val eventBus = new DefaultEventBus
-
-  private val subscription =
-    eventBus.onEvent {
-      case Fragment.Created(section) => addSection(section)
+  def executeFragments() = {
+    if (!executeFragmentsCalled) {
+      executeFragmentsCalled = true
+      results = fragments.map(_.execute())
     }
-
-  private def addSection(section: Fragment): Unit = {
-    _fragments +=
-      new Fragment {
-        def execute() = {
-          // make sure child sections do not end up as toplevel ones
-          subscription.disable()
-          val result = section.execute()
-          subscription.enable()
-          result
-        }
-      }
+    results
   }
 
-  implicit class FragmentConstructor(title: String) {
+  private val fragmentHandler = new FragmentHandler
 
-    def -[T](code: => T)(implicit asEnd: T => Fragment.Body): Fragment =
-      new DefaultFragment(title, code, eventBus)
+  protected def createFragment(title: String, body: => Fragment.Body): Fragment = {
+    val fragment = new DefaultFragment(title, body, fragmentHandler.onFragmentCreated)
+    if (!executeFragmentsCalled) fragments += fragment
+    fragmentHandler.fragmentCreated(fragment)
+    fragment
+  }
+
+  protected implicit class FragmentConstructor(title: String) {
+
+    def -[T](code: => T)(implicit asBody: T => Fragment.Body): Fragment =
+      createFragment(title, code)
   }
 }

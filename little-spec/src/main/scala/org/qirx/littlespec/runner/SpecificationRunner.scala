@@ -9,5 +9,5 @@ trait SpecificationRunner {
 
 class DefaultSpecificationRunner extends SpecificationRunner {
   def run(specification: Specification) =
-    specification.fragments.map(_.execute())
+    specification.executeFragments()
 }
