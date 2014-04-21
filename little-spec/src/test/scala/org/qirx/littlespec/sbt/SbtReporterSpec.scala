@@ -69,8 +69,11 @@ object SbtReporterSpec extends Specification {
       event.status is Status.Error
       event.duration is 0
 
-      out.logs.size is 2
-      out.logs is Seq(("error", "test"), ("error", "  message"))
+      out.logs.size is 3
+      out.logs.take(2) is Seq(("error", "test"), ("error", "  message"))
+      out.logs.drop(2).head isLike {
+        case ("trace", _) => success
+      }
     }
 
     "report pending" - {
@@ -128,7 +131,7 @@ object SbtReporterSpec extends Specification {
     def error(message: String): Unit = logs :+= "error" -> message
     def info(message: String): Unit = logs :+= "info" -> message
     def warn(message: String): Unit = logs :+= "warn" -> message
-    def trace(message: Throwable): Unit = ???
+    def trace(message: Throwable): Unit = logs :+= "trace" -> ""
 
   }
 }

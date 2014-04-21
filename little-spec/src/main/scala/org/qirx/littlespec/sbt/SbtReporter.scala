@@ -22,14 +22,14 @@ import org.qirx.littlespec.Result
 import org.qirx.littlespec.UnexpectedFailure
 
 trait SbtReporter {
-  def report(taskDef:TaskDef, eventHandler:EventHandler, loggers:Seq[Logger], results:Seq[Result]):Unit
+  def report(taskDef: TaskDef, eventHandler: EventHandler, loggers: Seq[Logger], results: Seq[Result]): Unit
 }
 
 class DefaultSbtReporter extends SbtReporter {
   def report(taskDef: TaskDef, eventHandler: EventHandler, loggers: Seq[Logger], results: Seq[Result]): Unit = {
 
     val event = eventFor(taskDef, eventHandler) _
-    val logLevel = logFor(loggers) _
+    val logLevel = logStringFor(loggers) _
 
     def report(results: Seq[Result], level: Int): Unit = {
       val log = logLevel(level)
@@ -45,6 +45,7 @@ class DefaultSbtReporter extends SbtReporter {
           event(Status.Error, Duration.Zero)
           log(_.error, title)
           log(_.error, "  " + t.getMessage)
+          logFor(loggers)(_.trace, t)
         case Failure(title, message) =>
           event(Status.Failure, Duration.Zero)
           log(_.error, title)
@@ -69,10 +70,14 @@ class DefaultSbtReporter extends SbtReporter {
         val throwable = new OptionalThrowable
       })
 
-  private def logFor(loggers: Seq[Logger])(level:Int)(method: Logger => String => Unit, message: String) = {
+  private def logStringFor(loggers: Seq[Logger])(level: Int)(method: Logger => String => Unit, message: String) = {
     val levelMessage = ("  " * level) + message
+    logFor(loggers)(method, levelMessage)
+  }
+
+  private def logFor[T](loggers: Seq[Logger])(method: Logger => T => Unit, message: T) = {
     loggers.foreach { logger =>
-      method(logger)(levelMessage)
+      method(logger)(message)
     }
   }
 }
