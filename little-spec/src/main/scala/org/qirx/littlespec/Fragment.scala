@@ -19,7 +19,7 @@ object Fragment {
     case class Pending(message: String) extends Body
 
     import scala.language.implicitConversions
-    implicit def unitToEnd(unit: Unit): Body = Todo
+    implicit def unitToTodo(unit: Unit): Body = Todo
     implicit def fragmentToBody(fragment: Fragment): Body = Success
   }
 }

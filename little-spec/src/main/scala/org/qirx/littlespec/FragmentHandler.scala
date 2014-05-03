@@ -10,12 +10,11 @@ class FragmentHandler {
   def onFragmentCreated(handler: Fragment => Unit): FragmentHandler.CancelSubscription = {
     subscriptions += handler
 
-	() => subscriptions -= handler
+    () => subscriptions -= handler
   }
 
   def fragmentCreated(fragment: Fragment): Unit =
     subscriptions.foreach(_ apply fragment)
-
 }
 
 object FragmentHandler {
