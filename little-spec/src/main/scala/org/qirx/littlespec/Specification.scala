@@ -8,4 +8,7 @@ trait Specification
   extends FragmentContainer
   with StaticAssertions
   with DefaultAssertEnhancements
-  with DefaultAssertions
+  with DefaultAssertions {
+
+  type FragmentBody = Fragment.Body
+}

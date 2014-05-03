@@ -12,5 +12,11 @@ object SpecificationSpec extends Specification {
       val specification = new Specification {}
       specification must beAnInstanceOf[FragmentContainer with StaticAssertions with DefaultAssertEnhancements with DefaultAssertions]
     }
+
+    "have a type alias for body" - {
+      val specification = new Specification {}
+      val x: specification.FragmentBody = todo: Fragment.Body
+      success
+    }
   }
 }
