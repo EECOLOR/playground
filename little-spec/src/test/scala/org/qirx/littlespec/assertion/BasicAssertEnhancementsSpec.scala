@@ -1,10 +1,10 @@
 package org.qirx.littlespec.assertion
 
 import org.qirx.littlespec.Specification
-import org.qirx.littlespec.Fragment.ThrowableFailure
 import org.qirx.littlespec.Assertion
 import org.qirx.littlespec.Fragment
 import testUtils.beAFailure
+import testUtils.beAFailureWithMessage
 
 object BasicAssertEnhancementsSpec extends Specification {
 
@@ -41,10 +41,7 @@ object BasicAssertEnhancementsSpec extends Specification {
               Left(s + " - failure")
           }
 
-        ("test" must assertion) must beAFailure.like {
-          case ThrowableFailure(message) => message is "test - failure"
-          case _ => failure("no exception was thrown")
-        }
+        ("test" must assertion) must beAFailureWithMessage("test - failure")
       }
 
       "that returns the body if that is returned" - {
@@ -66,6 +63,21 @@ object BasicAssertEnhancementsSpec extends Specification {
         ("test" must assertion) is success
       }
     }
-  }
 
+    "have a 'withMessage' enhancement for fragment bodies" - {
+      val message1 = "test1"
+      val message2 = "test2"
+      def body: Fragment.Body = failure(message1)
+
+      "that allows you to change the message" - {
+        def result = body withMessage (_ + " " + message2)
+        result must beAFailureWithMessage(message1 + " " + message2)
+      }
+
+      "that allows you to replace the message" - {
+        def result = body withMessage message2
+        result must beAFailureWithMessage(message2)
+      }
+    }
+  }
 }

@@ -25,4 +25,16 @@ trait BasicAssertEnhancements { self: StaticAssertions =>
       if (matcher.isDefinedAt(result)) matcher(result)
       else failure(result + " does not match pattern")
   }
+
+  implicit class FragmentBodyEnhancement(body: => Fragment.Body) {
+    def withMessage(changeMessage:String => String):Fragment.Body =
+      try body
+      catch {
+        case Fragment.ThrowableFailure(message) =>
+          failure(changeMessage(message))
+      }
+
+    def withMessage(message:String):Fragment.Body =
+      withMessage(_ => message)
+  }
 }
