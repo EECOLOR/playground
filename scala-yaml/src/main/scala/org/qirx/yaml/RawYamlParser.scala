@@ -3,10 +3,41 @@ package org.qirx.yaml
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.input.Reader
 import scala.language.implicitConversions
+import scala.collection.mutable.ListBuffer
 
 object RawYamlParser extends Parsers {
 
   type Elem = Char
+
+  /* AST */
+  case class Document(content: Node, directives: Seq[Directive] = Seq.empty)
+  object Document extends (Node => Document) {
+
+    def apply(content: Node): Document =
+      this(content, Seq.empty)
+
+    val empty = Document(Empty)
+  }
+
+  sealed trait Node
+  case object Empty extends Node
+  case class Scalar(value: String) extends Node
+
+  sealed trait Directive
+  case class UnknownDirective(name: String, parameters: Seq[String] = Seq.empty) extends Directive
+  case class TagDirective(handle: TagHandle, prefix: TagPrefix) extends Directive
+  case class YamlDirective(version: String) extends Directive
+
+  sealed trait TagHandle
+  object PrimaryTagHandle extends TagHandle
+  object SecondaryTagHandle extends TagHandle
+  case class NamedTagHandle(name: String) extends TagHandle
+
+  sealed trait TagPrefix
+  case class LocalTagPrefix(name: String) extends TagPrefix
+  case class GlobalTagPrefix(name: String) extends TagPrefix
+
+  /* PARSERS */
 
   def parse(s: String) =
     try {
@@ -17,93 +48,168 @@ object RawYamlParser extends Parsers {
         throw t
     }
 
-  override def log[T](p: => Parser[T])(name: String): Parser[T] = Parser { in =>
-    println(in.getClass.getName)
-    println("trying " + name + " at " + in)
-    val r = p(in)
-    r match {
-      case r @ Success(_, _) =>
-        println(name + " --> " + r.toString.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n"))
-      case r =>
-        println(name + " --> " + r)
-    }
-    r
-  }
+  /* COMMENTS */
 
   lazy val anyComment = commentLine | comment
-  lazy val commentLine = startOfLine ~ white.* ~ commentText.? ~ (break | endOfFile)
-  lazy val comment = white.+ ~ commentText
-  lazy val commentText = '#' ~ nonBreak.*
+  lazy val commentLine = startOfLine ~> white.* ~> commentText.? <~ (break | endOfFile)
+  lazy val comment = white.+ ~> commentText
+  lazy val commentText = '#' ~> nonBreak.*
 
-  lazy val startOfLine = whenInput({ x =>
-    x.pos match {
-      case pos: OffsetPosition => pos.column == 1
+  /* DOCUMENTS */
+
+  lazy val yamlStream =
+    (anyDocument | nonDocument).* ^^ removeNonDocuments
+
+  lazy val nonDocument = documentEnd ^^^ null
+
+  lazy val anyDocument =
+    directiveDocument | explicitDocument | bareDocument
+
+  lazy val directiveDocument =
+    directive.+ ~ commit(explicitDocument) ^^ {
+      case directives ~ document => document.copy(directives = directives)
     }
-  }, "Expected start of line")
+
+  lazy val explicitDocument =
+    directivesEnd ~> bareDocument.? ^^ {
+      case Some(document) => document
+      case None => Document(Empty)
+    }
+
+  lazy val bareDocument =
+    documentContent <~ documentEnd.? ^^ Document
+
+  /* DIRECTIVES */
+
+  lazy val directive = {
+    lazy val parser =
+      '%' ~> commit((yamlDirective | tagDirective | reservedDirective) <~ break)
+
+    lazy val yamlDirective = {
+      lazy val parser =
+        "YAML" ~> white.+ ~> commit(yamlVersion) ^^ YamlDirective
+
+      lazy val yamlVersion = decDigitChar.+ ~ ('.' ~> decDigitChar.+)
+      parser
+    }
+
+    lazy val tagDirective = {
+      lazy val parser =
+        "TAG" ~> white.+ ~> commit(tagHandle ~ (white.+ ~> tagPrefix)) ^^ TagDirective
+
+      lazy val tagHandle = {
+        lazy val parser = namedTagHandle | secondaryTagHandle | primaryTagHandle
+
+        lazy val primaryTagHandle = '!' ^^^ PrimaryTagHandle
+
+        lazy val secondaryTagHandle = "!!" ^^^ SecondaryTagHandle
+
+        lazy val namedTagHandle = '!' ~> wordChar.+ <~ '!' ^^ NamedTagHandle
+
+        parser
+      }
+
+      lazy val tagPrefix = {
+        lazy val parser = localTagPrefix | globalTagPrefix
+
+        lazy val localTagPrefix = '!' ~> uriChar.* ^^ LocalTagPrefix
+
+        lazy val globalTagPrefix = tagChar ~ uriChar.* ^^ GlobalTagPrefix
+
+        parser
+      }
+
+      parser
+    }
+
+    lazy val reservedDirective =
+      nonWhite.+ ~ (white.+ ~> nonWhite.+).* ^^ UnknownDirective
+
+    parser
+  }
+
+  lazy val documentContent =
+    scalar
+
+  lazy val scalar =
+    documentChar.+ ^^ Scalar
+
+  lazy val documentChar =
+    not(forbidden) >> allowedChar
+
+  lazy val forbidden =
+    documentEnd | directivesEnd
+
+  /* MARKERS */
+  lazy val directivesEnd = marker("---")
+  lazy val documentEnd = marker("...")
+
+  private def marker(marker: String) =
+    break.? ~ startOfLine ~ marker.p ~ (break | white | endOfFile)
+
+  /* INDICATORS */
+  lazy val startOfLine = whenInput(_.pos.column == 1, "Expected start of line")
   lazy val endOfFile = whenInput(_.atEnd, "Expected end of file")
+
+  /* CHARS */
 
   lazy val break = (cariageReturn ~ lineFeed) | cariageReturn | lineFeed
   lazy val lineFeed = 0xA.p
   lazy val cariageReturn = 0xD.p
 
-  def marker(marker: String) =
-    break.? ~ startOfLine ~ marker.p ~ (break | white | endOfFile)
-  private lazy val directivesEnd = marker("---")
-  private lazy val documentEnd = marker("...")
+  lazy val white = space | tab
+  lazy val space = 0x20.p
+  lazy val tab = 0x9.p
 
-  //val breakChar = lineFeed | cariageReturn
+  lazy val nonWhite = not(white) >> nonBreak
+  lazy val nonBreak = not(break) >> allowedChar
 
-  private val space = 0x20.p
-  private val tab = 0x9.p
-  private val white = space | tab
+  lazy val allowedChar = restrictChars(excludedChars)
 
-  private lazy val `C0 control block` = (0x0 -> 0x1F) - 0x9 - 0xA - 0xD + 0x7F
-  private lazy val `C1 control block` = (0x80 -> 0x97) - 0x85
-  private lazy val `surrogate block` = (0xD800 -> 0xDFFF) + 0xFFFE + 0xFFFF
-  private lazy val excludedChars = `C0 control block` ++ `C1 control block` ++ `surrogate block`
+  lazy val excludedChars = `C0 control block` ++ `C1 control block` ++ `surrogate block`
+  lazy val `C0 control block` = (0x0 -> 0x1F) - 0x9 - 0xA - 0xD + 0x7F
+  lazy val `C1 control block` = (0x80 -> 0x97) - 0x85
+  lazy val `surrogate block` = (0xD800 -> 0xDFFF) + 0xFFFE + 0xFFFF
 
-  val anyChar = acceptIf(_ => true)(_ => "should not happen, this eats everything")
+  lazy val uriChar =
+    (uriEscapedChar | wordChar | '#' |
+      ';' | '/' | '?' | ':' | '@' | '&' | '=' | '+' | '$' | ',' |
+      '_' | '.' | '!' | '~' | '*' | '\'' | '(' | ')' | '[' | ']') ^^ (_.toString)
 
-  private lazy val allowedChar =
-    not(endOfFile) >> restrictChars(excludedChars)
-
-  lazy val nonBreak =
-    not(break) >> allowedChar
-
-  lazy val forbidden =
-    documentEnd | directivesEnd
-
-  lazy val documentContent =
-    not(forbidden) >> allowedChar
-
-  case class Document(content: Option[String]) {
-    def this(content: String) = this(Some(content))
+  lazy val uriEscapedChar = '%' ~> hexDigitChar ~ hexDigitChar ^^ {
+    case d1 ~ d2 => "%" + d1.toString + d2.toString
   }
-  object Document extends (String => Document) {
-    def apply(content: String) = this(Some(content))
+  lazy val hexDigitChar = decDigitChar | (0x41 -> 0x46).p | (0x61 -> 0x66).p
+  lazy val wordChar = decDigitChar | asciiLetterChar | '-'
+  lazy val decDigitChar = (0x30 -> 0x39).p
+  lazy val asciiLetterChar = (0x41 -> 0x5A).p | (0x61 -> 0x7A).p
+
+  lazy val tagChar = not(flowIndicator) >> uriChar
+  lazy val flowIndicator = success("") ~> ',' | '[' | ']' | '{' | '}'
+
+  /* UTILS */
+
+  implicit def stringToParser(s: String) = s.p
+
+  implicit def c1[T](constructor: (String, Seq[String]) => T): Seq[Char] ~ Seq[Seq[Char]] => T = {
+    case a ~ b => constructor(a, b)
   }
-  lazy val bareDocument =
-    documentContent.+ <~ documentEnd.? ^^ Document
 
-  lazy val explicitDocument =
-    directivesEnd ~> bareDocument.? ^^ {
-      case Some(document) => document
-      case None => Document(None)
-    }
+  implicit def c2[T](constructor: String => T): String ~ Seq[String] => T = {
+    case a ~ b => constructor(a + b.mkString)
+  }
 
-  lazy val anyDocument =
-    /*directive_document | */ explicitDocument | bareDocument
+  implicit def c3[A, B, T](constructor: (A, B) => T): A ~ B => T = {
+    case a ~ b => constructor(a, b)
+  }
 
-  lazy val noDocument =
-    documentEnd ^^^ None
+  implicit def c4[T](constructor: String => T): List[Char] ~ List[Char] => T = {
+    case a ~ b => constructor(a.mkString + "." + b.mkString)
+  }
 
-  private lazy val yamlStream =
-    (noDocument | anyDocument).* ^^ (_.filter(_ != None))
+  private def removeNonDocuments(documents: Seq[Document]) =
+    documents filterNot (_ == null)
 
-  /*
-  lazy val forbiddenDocumentContent =
-    startOfLine & (directivesEnd | documentEnd) & (breakChar | white | endOfFile)
-*/
   private implicit class StringEnhancements(string: String) {
     def p: Parser[String] =
       new Parser[String] {
@@ -138,11 +244,16 @@ object RawYamlParser extends Parsers {
 
   private implicit class IntEnhancements(i: Int) {
     def ->(j: Int) = Seq.range(i, j).toSet
-    def p: Parser[Elem] = i.toChar
+    def p: Parser[Char] = i.toChar
+  }
+
+  private implicit class SetEnhancements(s: Set[Int]) {
+    def p: Parser[Char] = s.map(_.toChar).map(accept).reduce(_ | _)
   }
 
   /*
     Performance improvement
+
   private class CharParser(parser: Parser[Char]) {
     def + : Parser[String] = {
       new Parser[String] {
@@ -195,8 +306,14 @@ object RawYamlParser extends Parsers {
   implicit def toUnitFunction[T](p: Parser[T]): Unit => Parser[T] =
     (_) => p
 
-  implicit def charListToStringConstructor[T](constructor: String => T): List[Char] => T =
-    list => constructor(list.mkString)
+  implicit def charSeqToNode(list: Seq[Any]): Node = Scalar(list.mkString)
+  implicit def charSeqToString(list: Seq[Any]): String = list.mkString
+
+  implicit def seqContent[A](list: Seq[A])(implicit ev: A => String): Seq[String] =
+    list.map(ev)
+
+  implicit def toConstructor1[A, B, C](constructor: A => B)(implicit ev: C => A): C => B =
+    c => constructor(c)
 
   private class SkippingReader(in: Reader[Char], skip: Parser[_]) extends Reader[Char] {
     lazy val current = {
