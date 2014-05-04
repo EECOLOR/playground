@@ -24,7 +24,7 @@ object FragmentSpec extends Specification {
       }
     }
 
-    "fragment body instances should" - {
+    "fragment body should" - {
 
       "have a todo constructor that returns a fragment body" -
         isBody(Fragment.Body.Todo)
@@ -92,7 +92,7 @@ object FragmentSpec extends Specification {
 
       "capture failures" - {
         val message = "custom failure"
-        val result = execute(throw Fragment.ThrowableFailure("custom failure"))
+        val result = execute(failWithMessage("custom failure"))
         result is Failure(defaultTitle, message)
       }
 
@@ -150,6 +150,9 @@ object FragmentSpec extends Specification {
 
   def execute(code: => Fragment.Body) =
     newFragment(code).execute
+
+  def failWithMessage(message: String) =
+    throw Fragment.ThrowableFailure(message)
 
   implicit def numeric[T <: Duration]: Numeric[T] =
     new Numeric[T] {
