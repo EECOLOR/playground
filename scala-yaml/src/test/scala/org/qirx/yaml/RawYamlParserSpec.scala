@@ -1,8 +1,6 @@
 package org.qirx.yaml
 
 import org.qirx.littlespec.Specification
-import scala.util.parsing.input.CharSequenceReader
-import scala.util.parsing.input.CharArrayReader
 
 object RawYamlParserSpec extends Specification {
   import RawYamlParser._
@@ -50,32 +48,50 @@ object RawYamlParserSpec extends Specification {
     }
 
     "handle empty streams" - {
-      Seq(
-        "",
-        "\n",
-        "...",
-        "...\n",
-        "\n...",
-        "\n...\n",
-        " ",
-        " \n",
-        "\n ",
-        "\n \n",
-        " \n...",
-        "... ",
-        "...\t",
-        "\t",
-        "#",
-        "# ",
-        "# Comment",
-        "# Comment 1\n# Comment 2",
-        " #",
-        " # ",
-        " # Comment",
-        "... #",
-        "  # Comment\n   \n",
-        "... # Comment \n...")
-        .foreach(_ isParsedAs Seq.empty)
+      val emptyStreams =
+        Seq(
+          "",
+          "\n",
+          "...",
+          "...\n",
+          "\n...",
+          "\n...\n",
+          " ",
+          " \n",
+          "\n ",
+          "\n \n",
+          " \n...",
+          "... ",
+          "...\t",
+          "\t",
+          "#",
+          "# ",
+          "# Comment",
+          "# Comment 1\n# Comment 2",
+          " #",
+          " # ",
+          " # Comment",
+          "... #",
+          "  # Comment\n   \n",
+          "... # Comment \n...")
+
+      def forAllLineEndings(s: String): Seq[String] =
+        Seq("\r", "\r\n").foldLeft(Seq(s)) { (seq, replacement) =>
+          seq :+ s.replaceAll("\n", replacement)
+        }
+
+      for {
+        stream <- emptyStreams
+        withLineEndings <- forAllLineEndings(stream)
+      } {
+        val escapeLineEndingCharacters = (message: String) =>
+          "Failure for '" +
+            withLineEndings
+            .replaceAll("\r", "\\\\r")
+            .replaceAll("\n", "\\\\n") + "': " + message
+
+        withLineEndings isParsedAs Seq.empty withMessage escapeLineEndingCharacters
+      }
 
       success
     }

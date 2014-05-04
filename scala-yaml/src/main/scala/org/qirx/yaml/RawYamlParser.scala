@@ -1,13 +1,104 @@
 package org.qirx.yaml
 
 import scala.util.parsing.combinator.Parsers
-import scala.util.parsing.input.CharSequenceReader
 import scala.util.parsing.input.Reader
 import scala.language.implicitConversions
 
 object RawYamlParser extends Parsers {
 
   type Elem = Char
+
+  def parse(s: String) =
+    try {
+      yamlStream(new SkippingReader(new CharSequenceReader(s), anyComment))
+    } catch {
+      case t: Throwable =>
+        t.printStackTrace()
+        throw t
+    }
+
+  override def log[T](p: => Parser[T])(name: String): Parser[T] = Parser { in =>
+    println(in.getClass.getName)
+    println("trying " + name + " at " + in)
+    val r = p(in)
+    r match {
+      case r @ Success(_, _) =>
+        println(name + " --> " + r.toString.replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n"))
+      case r =>
+        println(name + " --> " + r)
+    }
+    r
+  }
+
+  lazy val anyComment = commentLine | comment
+  lazy val commentLine = startOfLine ~ white.* ~ commentText.? ~ (break | endOfFile)
+  lazy val comment = white.+ ~ commentText
+  lazy val commentText = '#' ~ nonBreak.*
+
+  lazy val startOfLine = whenInput({ x =>
+    x.pos match {
+      case pos: OffsetPosition => pos.column == 1
+    }
+  }, "Expected start of line")
+  lazy val endOfFile = whenInput(_.atEnd, "Expected end of file")
+
+  lazy val break = (cariageReturn ~ lineFeed) | cariageReturn | lineFeed
+  lazy val lineFeed = 0xA.p
+  lazy val cariageReturn = 0xD.p
+
+  def marker(marker: String) =
+    break.? ~ startOfLine ~ marker.p ~ (break | white | endOfFile)
+  private lazy val directivesEnd = marker("---")
+  private lazy val documentEnd = marker("...")
+
+  //val breakChar = lineFeed | cariageReturn
+
+  private val space = 0x20.p
+  private val tab = 0x9.p
+  private val white = space | tab
+
+  private lazy val `C0 control block` = (0x0 -> 0x1F) - 0x9 - 0xA - 0xD + 0x7F
+  private lazy val `C1 control block` = (0x80 -> 0x97) - 0x85
+  private lazy val `surrogate block` = (0xD800 -> 0xDFFF) + 0xFFFE + 0xFFFF
+  private lazy val excludedChars = `C0 control block` ++ `C1 control block` ++ `surrogate block`
+
+  val anyChar = acceptIf(_ => true)(_ => "should not happen, this eats everything")
+
+  private lazy val allowedChar =
+    not(endOfFile) >> restrictChars(excludedChars)
+
+  lazy val nonBreak =
+    not(break) >> allowedChar
+
+  lazy val forbidden =
+    documentEnd | directivesEnd
+
+  lazy val documentContent =
+    not(forbidden) >> allowedChar
+
+  case class Document(content: Option[String]) {
+    def this(content: String) = this(Some(content))
+  }
+  object Document extends (String => Document) {
+    def apply(content: String) = this(Some(content))
+  }
+  lazy val bareDocument =
+    documentContent.+ <~ documentEnd.? ^^ Document
+
+  lazy val explicitDocument =
+    directivesEnd ~> bareDocument.? ^^ {
+      case Some(document) => document
+      case None => Document(None)
+    }
+
+  lazy val anyDocument =
+    /*directive_document | */ explicitDocument | bareDocument
+
+  lazy val noDocument =
+    documentEnd ^^^ None
+
+  private lazy val yamlStream =
+    (noDocument | anyDocument).* ^^ (_.filter(_ != None))
 
   /*
   lazy val forbiddenDocumentContent =
@@ -50,6 +141,8 @@ object RawYamlParser extends Parsers {
     def p: Parser[Elem] = i.toChar
   }
 
+  /*
+    Performance improvement
   private class CharParser(parser: Parser[Char]) {
     def + : Parser[String] = {
       new Parser[String] {
@@ -79,7 +172,7 @@ object RawYamlParser extends Parsers {
       new CharParser(parser <~ p)
 
   }
-
+  */
   private def restrictChars(set: Set[Int]) = {
     val chars = set.map(_.toChar)
     new Parser[Char] {
@@ -123,78 +216,4 @@ object RawYamlParser extends Parsers {
     lazy val first = current.first
     lazy val rest = new SkippingReader(current.rest, skip)
   }
-
-  private val startOfLine = whenInput(_.pos.column == 1, "Expected start of line")
-  private val endOfFile = whenInput(_.atEnd, "Expected end of file")
-
-  def marker(marker:String) =
-    break.? ~ startOfLine ~ marker.p ~ (break | white | endOfFile)
-  private lazy val directivesEnd = marker("---")
-  private lazy val documentEnd = marker("...")
-
-  private val lineFeed = 0xA.p
-  private val cariageReturn = 0xD.p
-  //val breakChar = lineFeed | cariageReturn
-  private val break = (cariageReturn ~ lineFeed) | cariageReturn | lineFeed
-
-  private val space = 0x20.p
-  private val tab = 0x9.p
-  private val white = space | tab
-
-  private lazy val `C0 control block` = (0x0 -> 0x1F) - 0x9 - 0xA - 0xD + 0x7F
-  private lazy val `C1 control block` = (0x80 -> 0x97) - 0x85
-  private lazy val `surrogate block` = (0xD800 -> 0xDFFF) + 0xFFFE + 0xFFFF
-  private lazy val excludedChars = `C0 control block` ++ `C1 control block` ++ `surrogate block`
-
-  val anyChar = log(acceptIf(_ => true)(_ => "should not happen, this eats everything"))("anychar")
-
-  private lazy val allowedChar =
-    not(endOfFile) >> restrictChars(excludedChars)
-
-  lazy val nonBreak =
-    not(break) >> allowedChar
-
-  lazy val anyComment = (commentLine | comment)
-  lazy val commentLine = startOfLine ~ white.* ~ commentText.? ~ (break | endOfFile)
-  lazy val comment = white.+ ~ commentText
-  lazy val commentText = '#' ~ nonBreak.*
-
-  lazy val forbidden =
-    documentEnd | directivesEnd
-
-  lazy val documentContent =
-    not(forbidden) >> allowedChar
-
-  case class Document(content: Option[String]) {
-    def this(content: String) = this(Some(content))
-  }
-  object Document extends (String => Document) {
-    def apply(content:String) = this(Some(content))
-  }
-  lazy val bareDocument =
-    documentContent.+ <~ documentEnd.? ^^ Document
-
-  lazy val explicitDocument =
-    directivesEnd ~> bareDocument.? ^^ {
-      case Some(document) => document
-      case None => Document(None)
-    }
-
-  lazy val anyDocument =
-    /*directive_document | */ explicitDocument | bareDocument
-
-  lazy val noDocument =
-    documentEnd ^^^ None
-
-  private lazy val yamlStream =
-    (noDocument | anyDocument).* ^^ (_.filter(_ != None))
-
-  def parse(s: String) =
-    try {
-      yamlStream(new SkippingReader(new CharSequenceReader(s), anyComment))
-    } catch {
-      case t: Throwable =>
-        t.printStackTrace()
-        throw t
-    }
 }
