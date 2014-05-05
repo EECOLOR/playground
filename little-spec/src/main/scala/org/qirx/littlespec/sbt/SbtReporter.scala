@@ -44,12 +44,12 @@ class DefaultSbtReporter extends SbtReporter {
         case UnexpectedFailure(title, t) =>
           event(Status.Error, Duration.Zero)
           log(_.error, title)
-          log(_.error, "  " + t.getMessage)
+          logLevel(level + 1)(_.error, t.getMessage)
           logFor(loggers)(_.trace, t)
         case Failure(title, message) =>
           event(Status.Failure, Duration.Zero)
           log(_.error, title)
-          log(_.error, "  " + message)
+          logLevel(level + 1)(_.error, message)
         case Pending(title, message) =>
           event(Status.Pending, Duration.Zero)
           log(_.warn, title + " - " + message)
@@ -71,7 +71,12 @@ class DefaultSbtReporter extends SbtReporter {
       })
 
   private def logStringFor(loggers: Seq[Logger])(level: Int)(method: Logger => String => Unit, message: String) = {
-    val levelMessage = ("  " * level) + message
+    val levelIndentation = "  " * level
+    val levelMessage =
+      message
+        .split("(\r\n|\r|\n)")
+        .mkString(levelIndentation, "\n" + levelIndentation, "")
+
     logFor(loggers)(method, levelMessage)
   }
 

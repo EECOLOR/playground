@@ -87,7 +87,6 @@ object SbtReporterSpec extends Specification {
 
       out.events.size is 0
 
-      out.logs.size is 1
       out.logs.head is ("info", "test")
     }
 
@@ -95,8 +94,14 @@ object SbtReporterSpec extends Specification {
       val in = CompoundResult("outer", Seq(Success("inner")(1.second)))
       val out = report(Seq(in))
 
-      out.logs.size is 2
       out.logs is Seq(("info", "outer"), ("info", "  inner"))
+    }
+
+    "report multiline" - {
+      val in = CompoundResult("outer", Seq(Success("inner1\ninner2\r\ninner3\rinner4")(1.second)))
+      val out = report(Seq(in))
+
+      out.logs is Seq(("info", "outer"), ("info", "  inner1\n  inner2\n  inner3\n  inner4"))
     }
   }
 

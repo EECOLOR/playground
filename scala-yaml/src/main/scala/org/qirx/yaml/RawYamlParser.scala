@@ -41,7 +41,9 @@ object RawYamlParser extends Parsers {
 
   def parse(s: String) =
     try {
-      yamlStream(new SkippingReader(new CharSequenceReader(s), anyComment))
+      yamlStream(new CharSequenceReader(s) with SkippingReader {
+        val in = new YamlReader(this, failure("nothing"))
+      })
     } catch {
       case t: Throwable =>
         t.printStackTrace()
@@ -58,7 +60,8 @@ object RawYamlParser extends Parsers {
   /* DOCUMENTS */
 
   lazy val yamlStream =
-    (anyDocument | nonDocument).* ^^ removeNonDocuments
+    whileIgnoring(anyComment) apply
+      (anyDocument | nonDocument).* ^^ removeNonDocuments
 
   lazy val nonDocument = documentEnd ^^^ null
 
@@ -129,7 +132,15 @@ object RawYamlParser extends Parsers {
   }
 
   lazy val documentContent =
-    scalar
+    literalScalar | scalar
+
+  /* SCALAR */
+
+  lazy val literalScalar = whileIgnoring(comment) apply
+    '|' ~> break ~>
+      commit(withDetectedIndentation { i =>
+        whileIgnoring(indentationOf(i) | comment) apply scalar
+      })
 
   lazy val scalar =
     documentChar.+ ^^ Scalar
@@ -150,6 +161,11 @@ object RawYamlParser extends Parsers {
   /* INDICATORS */
   lazy val startOfLine = whenInput(_.pos.column == 1, "Expected start of line")
   lazy val endOfFile = whenInput(_.atEnd, "Expected end of file")
+
+  lazy val nothing = failure("nothing")
+
+  def indentationOf(i: Int) =
+    whileIgnoring(nothing) apply startOfLine ~ (white * i)
 
   /* CHARS */
 
@@ -187,7 +203,24 @@ object RawYamlParser extends Parsers {
   lazy val tagChar = not(flowIndicator) >> uriChar
   lazy val flowIndicator = success("") ~> ',' | '[' | ']' | '{' | '}'
 
+  /* DETECTION */
+
+  private def withDetectedIndentation[T](parser: Int => Parser[T]) =
+    whileIgnoring(nothing) apply guard(detectIndentation) >> parser
+
+  lazy val detectIndentation =
+    (startOfLine ~ white.* ~ break).* ~>
+      startOfLine ~> white.* <~ nonWhite ^^ (_.size)
+
   /* UTILS */
+
+  private def whileIgnoring[T](skip: Parser[_]) =
+    (parser: Parser[T]) => changeContext(_ skipping skip)(parser)
+
+  private def changeContext[T](change: SkippingReader => SkippingReader)(parser: Parser[T]): Parser[T] =
+    new Parser[T] {
+      def apply(in: Input) = parser(change(in.asInstanceOf[SkippingReader]))
+    }
 
   implicit def stringToParser(s: String) = s.p
 
@@ -251,39 +284,11 @@ object RawYamlParser extends Parsers {
     def p: Parser[Char] = s.map(_.toChar).map(accept).reduce(_ | _)
   }
 
-  /*
-    Performance improvement
-
-  private class CharParser(parser: Parser[Char]) {
-    def + : Parser[String] = {
-      new Parser[String] {
-        def apply(in: Input) = {
-          val s = new StringBuffer
-
-          def parse(in: Input): ParseResult[Char] = {
-            parser(in) match {
-              case Success(elem, rest) =>
-                s.append(elem)
-                parse(rest)
-              case ns: NoSuccess => ns
-            }
-          }
-
-          parse(in) match {
-            case Failure(_, rest) if (s.length > 0) => Success(s.toString, rest)
-            case f @ Failure(_, _) => f
-            case e @ Error(_, _) => e
-            case unexpected => sys.error("Unexpected state: " + unexpected)
-          }
-        }
-      }
-    }
-
-    def <~[T](p: Parser[T]) =
-      new CharParser(parser <~ p)
-
+  private implicit class ParserEnhancements[A](parser: Parser[A]) {
+    def *(times: Int): Parser[List[A]] =
+      repN(times, parser)
   }
-  */
+
   private def restrictChars(set: Set[Int]) = {
     val chars = set.map(_.toChar)
     new Parser[Char] {
@@ -315,12 +320,16 @@ object RawYamlParser extends Parsers {
   implicit def toConstructor1[A, B, C](constructor: A => B)(implicit ev: C => A): C => B =
     c => constructor(c)
 
-  private class SkippingReader(in: Reader[Char], skip: Parser[_]) extends Reader[Char] {
+  trait SkippingReader extends Reader[Char] {
+    val in: Reader[Char]
+    def skipping(skip: Parser[_]) = new YamlReader(in, skip)
+  }
+
+  class YamlReader(val in: Reader[Char], skip: Parser[_]) extends Reader[Char] with SkippingReader {
     lazy val current = {
       skip(in) match {
-        case Success(_, next) if (next.pos == in.pos) => in
-        case Success(_, next: SkippingReader) => next
-        case Success(_, next) => new SkippingReader(next, skip)
+        case Success(_, next) if (next.pos == in.pos) => next
+        case Success(_, next) => new YamlReader(next, skip)
         case _ => in
       }
     }
@@ -331,6 +340,6 @@ object RawYamlParser extends Parsers {
     lazy val pos = current.pos
     lazy val atEnd = current.atEnd
     lazy val first = current.first
-    lazy val rest = new SkippingReader(current.rest, skip)
+    lazy val rest = new YamlReader(current.rest, skip)
   }
 }

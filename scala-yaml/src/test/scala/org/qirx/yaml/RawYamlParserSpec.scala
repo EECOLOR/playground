@@ -6,13 +6,23 @@ object RawYamlParserSpec extends Specification {
   import RawYamlParser._
 
   implicit class StringEnhancements(s: String) {
-    def isParsedAs(expected: Seq[_]): FragmentBody =
-      parse(s.stripMargin) isLike {
-        case Success(result, _) => result is expected
+    def shouldParseAs(expected: Seq[_]): FragmentBody = {
+      parse(s) isLike {
+        case Success(result, _) =>
+          result is expected withMessage { original =>
+            val formattedString = s
+              .replaceAll(" ", "·")
+              .replaceAll("\t", "→")
+              .replaceAll("(\r\n|\r|\n)", "↓\n")
+            s"$formattedString is not parsed as $expected but as $result"
+          }
       }
+    }
 
-    def isParsedAsErrorAt[T](line: Int, column: Int): FragmentBody =
-      parse(s.stripMargin) isLike {
+    def strip = s.stripMargin
+
+    def shouldParseAsErrorAt[T](line: Int, column: Int): FragmentBody =
+      parse(s) isLike {
         case Error(_, next) =>
           (next.pos.line, next.pos.column) is (line, column) withMessage { original =>
             s"'$s' did not give an error at the correct location: $original"
@@ -22,10 +32,12 @@ object RawYamlParserSpec extends Specification {
 
   }
 
-  def document(content:String, directives:Seq[Directive] = Seq.empty) =
+  def document(content: String, directives: Seq[Directive] = Seq.empty) =
     Document(Scalar(content), directives)
 
   "RawYamlParser should" - {
+
+    val oneDocument = Seq(document("Doc"))
 
     "handle empty streams" - {
       val emptyStreams =
@@ -70,23 +82,22 @@ object RawYamlParserSpec extends Specification {
             .replaceAll("\r", "\\\\r")
             .replaceAll("\n", "\\\\n") + "': " + message
 
-        withLineEndings isParsedAs Seq.empty withMessage escapeLineEndingCharacters
+        withLineEndings shouldParseAs Seq.empty withMessage escapeLineEndingCharacters
       }
 
       success
     }
 
-    val oneDocument = Seq(document("Doc"))
     val twoDocuments = Seq(document("Doc1"), document("Doc2"))
 
     "handle 'bare' documents" - {
 
-      "Doc" isParsedAs oneDocument
-      "Doc # Comment" isParsedAs oneDocument
+      "Doc" shouldParseAs oneDocument
+      "Doc # Comment" shouldParseAs oneDocument
 
       """|Doc1
          |...
-         |Doc2""" isParsedAs twoDocuments
+         |Doc2""".strip shouldParseAs twoDocuments
 
       """|Doc1     # Comment
          |...
@@ -94,10 +105,10 @@ object RawYamlParserSpec extends Specification {
          |...
          |Doc2
          |...
-         |# No document 2""" isParsedAs twoDocuments
+         |# No document 2""".strip shouldParseAs twoDocuments
 
       """|Doc1
-         |%""" isParsedAs Seq(document("Doc1\n%"))
+         |%""".strip shouldParseAs Seq(document("Doc1\n%"))
     }
 
     def emptyDocument(directives: Directive*) =
@@ -106,38 +117,38 @@ object RawYamlParserSpec extends Specification {
     "handle 'explicit' documents" - {
       val oneEmptyDocument = emptyDocument()
 
-      "---" isParsedAs oneEmptyDocument
-      "--- " isParsedAs oneEmptyDocument
-      "---\n" isParsedAs oneEmptyDocument
+      "---" shouldParseAs oneEmptyDocument
+      "--- " shouldParseAs oneEmptyDocument
+      "---\n" shouldParseAs oneEmptyDocument
       """|---
-         |# Comment""" isParsedAs oneEmptyDocument
+         |# Comment""".strip shouldParseAs oneEmptyDocument
 
       """|---
-         |Doc""" isParsedAs oneDocument
+         |Doc""".strip shouldParseAs oneDocument
 
       """|Doc1
          |---
-         |Doc2""" isParsedAs twoDocuments
+         |Doc2""".strip shouldParseAs twoDocuments
 
       """|Doc
          |---
-         |# No document""" isParsedAs (oneDocument ++ oneEmptyDocument)
+         |# No document""".strip shouldParseAs (oneDocument ++ oneEmptyDocument)
 
       """|---
          |Doc
          |...
          |---
          |# Empty
-         |...""" isParsedAs (oneDocument ++ oneEmptyDocument)
+         |...""".strip shouldParseAs (oneDocument ++ oneEmptyDocument)
     }
 
     "handle 'directive' documents" - {
 
       "invalid directives" - {
-        "%" isParsedAsErrorAt (1, 2)
-        "% " isParsedAsErrorAt (1, 2)
-        "%A" isParsedAsErrorAt (1, 3)
-        "%A\n" isParsedAsErrorAt (2, 1)
+        "%" shouldParseAsErrorAt (1, 2)
+        "% " shouldParseAsErrorAt (1, 2)
+        "%A" shouldParseAsErrorAt (1, 3)
+        "%A\n" shouldParseAsErrorAt (2, 1)
       }
 
       "unknown directive" - {
@@ -147,13 +158,13 @@ object RawYamlParserSpec extends Specification {
         def namedUnknownDirective(name: String, parameters: Seq[String] = Seq.empty) =
           emptyDocument(UnknownDirective(name, parameters))
 
-        "%Unknown\n---" isParsedAs unknownDirective()
-        "%Unknown p1\n---" isParsedAs unknownDirective("p1")
-        "%Unknown p1 p2\n---" isParsedAs unknownDirective("p1", "p2")
-        "%TAG\n---" isParsedAs namedUnknownDirective("TAG")
-        "%TAGS\n---" isParsedAs namedUnknownDirective("TAGS")
-        "%YAML\n---" isParsedAs namedUnknownDirective("YAML")
-        "%YAMLS\n---" isParsedAs namedUnknownDirective("YAMLS")
+        "%Unknown\n---" shouldParseAs unknownDirective()
+        "%Unknown p1\n---" shouldParseAs unknownDirective("p1")
+        "%Unknown p1 p2\n---" shouldParseAs unknownDirective("p1", "p2")
+        "%TAG\n---" shouldParseAs namedUnknownDirective("TAG")
+        "%TAGS\n---" shouldParseAs namedUnknownDirective("TAGS")
+        "%YAML\n---" shouldParseAs namedUnknownDirective("YAML")
+        "%YAMLS\n---" shouldParseAs namedUnknownDirective("YAMLS")
       }
 
       "tag directive" - {
@@ -161,32 +172,32 @@ object RawYamlParserSpec extends Specification {
         def emptyWith(tagHandle: TagHandle, prefix: TagPrefix) =
           emptyDocument(TagDirective(tagHandle, prefix))
 
-        "%TAG \n---" isParsedAsErrorAt (1, 6)
+        "%TAG \n---" shouldParseAsErrorAt (1, 6)
 
         def testWithHandle(h: String, handle: TagHandle) = {
           val pos = h.length
-          s"%TAG $h\n---" isParsedAsErrorAt (1, 6 + pos)
-          s"%TAG $h \n---" isParsedAsErrorAt (1, 7 + pos)
-          s"%TAG $h !\n---" isParsedAs emptyWith(handle, LocalTagPrefix(""))
-          s"%TAG $h !test\n---" isParsedAs emptyWith(handle, LocalTagPrefix("test"))
-          s"%TAG $h !%0\n---" isParsedAsErrorAt (1, 8 + pos)
-          s"%TAG $h !%a\n---" isParsedAsErrorAt (1, 8 + pos)
-          s"%TAG $h !%0x\n---" isParsedAsErrorAt (1, 8 + pos)
-          s"%TAG $h !%ax\n---" isParsedAsErrorAt (1, 8 + pos)
-          s"%TAG $h !%x0\n---" isParsedAsErrorAt (1, 8 + pos)
-          s"%TAG $h !%xa\n---" isParsedAsErrorAt (1, 8 + pos)
-          s"%TAG $h !%00\n---" isParsedAs emptyWith(handle, LocalTagPrefix("%00"))
-          s"%TAG $h !%0a\n---" isParsedAs emptyWith(handle, LocalTagPrefix("%0a"))
-          s"%TAG $h !%a0\n---" isParsedAs emptyWith(handle, LocalTagPrefix("%a0"))
-          s"%TAG $h !%aa\n---" isParsedAs emptyWith(handle, LocalTagPrefix("%aa"))
-          s"%TAG $h ,\n---" isParsedAsErrorAt (1, 7 + pos)
-          s"%TAG $h [\n---" isParsedAsErrorAt (1, 7 + pos)
-          s"%TAG $h ]\n---" isParsedAsErrorAt (1, 7 + pos)
-          s"%TAG $h {\n---" isParsedAsErrorAt (1, 7 + pos)
-          s"%TAG $h }\n---" isParsedAsErrorAt (1, 7 + pos)
-          s"%TAG $h test\n---" isParsedAs emptyWith(handle, GlobalTagPrefix("test"))
-          s"%TAG $h 10\n---" isParsedAs emptyWith(handle, GlobalTagPrefix("10"))
-          s"%TAG $h a[b]c,d!e\n---" isParsedAs emptyWith(handle, GlobalTagPrefix("a[b]c,d!e"))
+          s"%TAG $h\n---" shouldParseAsErrorAt (1, 6 + pos)
+          s"%TAG $h \n---" shouldParseAsErrorAt (1, 7 + pos)
+          s"%TAG $h !\n---" shouldParseAs emptyWith(handle, LocalTagPrefix(""))
+          s"%TAG $h !test\n---" shouldParseAs emptyWith(handle, LocalTagPrefix("test"))
+          s"%TAG $h !%0\n---" shouldParseAsErrorAt (1, 8 + pos)
+          s"%TAG $h !%a\n---" shouldParseAsErrorAt (1, 8 + pos)
+          s"%TAG $h !%0x\n---" shouldParseAsErrorAt (1, 8 + pos)
+          s"%TAG $h !%ax\n---" shouldParseAsErrorAt (1, 8 + pos)
+          s"%TAG $h !%x0\n---" shouldParseAsErrorAt (1, 8 + pos)
+          s"%TAG $h !%xa\n---" shouldParseAsErrorAt (1, 8 + pos)
+          s"%TAG $h !%00\n---" shouldParseAs emptyWith(handle, LocalTagPrefix("%00"))
+          s"%TAG $h !%0a\n---" shouldParseAs emptyWith(handle, LocalTagPrefix("%0a"))
+          s"%TAG $h !%a0\n---" shouldParseAs emptyWith(handle, LocalTagPrefix("%a0"))
+          s"%TAG $h !%aa\n---" shouldParseAs emptyWith(handle, LocalTagPrefix("%aa"))
+          s"%TAG $h ,\n---" shouldParseAsErrorAt (1, 7 + pos)
+          s"%TAG $h [\n---" shouldParseAsErrorAt (1, 7 + pos)
+          s"%TAG $h ]\n---" shouldParseAsErrorAt (1, 7 + pos)
+          s"%TAG $h {\n---" shouldParseAsErrorAt (1, 7 + pos)
+          s"%TAG $h }\n---" shouldParseAsErrorAt (1, 7 + pos)
+          s"%TAG $h test\n---" shouldParseAs emptyWith(handle, GlobalTagPrefix("test"))
+          s"%TAG $h 10\n---" shouldParseAs emptyWith(handle, GlobalTagPrefix("10"))
+          s"%TAG $h a[b]c,d!e\n---" shouldParseAs emptyWith(handle, GlobalTagPrefix("a[b]c,d!e"))
         }
 
         "primary tag handle" - testWithHandle("!", PrimaryTagHandle)
@@ -195,11 +206,11 @@ object RawYamlParserSpec extends Specification {
       }
 
       "YAML directive" - {
-        "%YAML \n---" isParsedAsErrorAt (1, 7)
-        "%YAML 1\n---" isParsedAsErrorAt (1, 8)
-        "%YAML 1.\n---" isParsedAsErrorAt (1, 9)
-        "%YAML 0.0\n---" isParsedAs emptyDocument(YamlDirective("0.0"))
-        "%YAML 10.10\n---" isParsedAs emptyDocument(YamlDirective("10.10"))
+        "%YAML \n---" shouldParseAsErrorAt (1, 7)
+        "%YAML 1\n---" shouldParseAsErrorAt (1, 8)
+        "%YAML 1.\n---" shouldParseAsErrorAt (1, 9)
+        "%YAML 0.0\n---" shouldParseAs emptyDocument(YamlDirective("0.0"))
+        "%YAML 10.10\n---" shouldParseAs emptyDocument(YamlDirective("10.10"))
       }
     }
 
@@ -210,10 +221,29 @@ object RawYamlParserSpec extends Specification {
          |...
          |%YAML 1.2
          |---
-         |Doc2""" isParsedAs Seq(
-             document("Doc1"),
-             Document.empty,
-             document("Doc2", Seq(YamlDirective("1.2"))))
+         |Doc2""".strip shouldParseAs
+        Seq(
+          document("Doc1"),
+          Document.empty,
+          document("Doc2", Seq(YamlDirective("1.2"))))
+    }
+
+    "handle litteral scalars" - {
+
+      "|\nDoc" shouldParseAs oneDocument
+      "|\n\nDoc" shouldParseAs Seq(document("\nDoc"))
+      "| #Comment\n\nDoc" shouldParseAs Seq(document("\nDoc"))
+      """||
+         | literal
+         |  text
+         |""".strip shouldParseAs Seq(document("literal\n text\n"))
+      s"""||
+          |${' '}
+          | literal
+          |""".strip shouldParseAs Seq(document("\nliteral\n"))
+      """||
+         | # Not a comment
+         |  text""".strip shouldParseAs(Seq(document("# Not a comment\n text")))
     }
   }
 
@@ -280,7 +310,7 @@ object RawYamlParserSpec extends Specification {
 
       val invalidChars = allChars -- uriChars - '%' - '\n' - '\r'
       //for (i <- invalidChars)
-      //primary("!" + i.toChar.toString) isParsedAsErrorAt (1, 9)
+      //primary("!" + i.toChar.toString) shouldParseAsErrorAt (1, 9)
 
       pending("disabled for performance")
     }
