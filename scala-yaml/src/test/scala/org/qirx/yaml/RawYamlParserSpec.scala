@@ -33,11 +33,11 @@ object RawYamlParserSpec extends Specification {
   }
 
   def document(content: String, directives: Seq[Directive] = Seq.empty) =
-    Document(Scalar(content), directives)
+    Seq(Document(Scalar(content), directives))
 
   "RawYamlParser should" - {
 
-    val oneDocument = Seq(document("Doc"))
+    val oneDocument = document("Doc")
 
     "handle empty streams" - {
       val emptyStreams =
@@ -88,7 +88,7 @@ object RawYamlParserSpec extends Specification {
       success
     }
 
-    val twoDocuments = Seq(document("Doc1"), document("Doc2"))
+    val twoDocuments = document("Doc1") ++ document("Doc2")
 
     "handle 'bare' documents" - {
 
@@ -108,7 +108,7 @@ object RawYamlParserSpec extends Specification {
          |# No document 2""".strip shouldParseAs twoDocuments
 
       """|Doc1
-         |%""".strip shouldParseAs Seq(document("Doc1\n%"))
+         |%""".strip shouldParseAs document("Doc1\n%")
     }
 
     def emptyDocument(directives: Directive*) =
@@ -222,28 +222,39 @@ object RawYamlParserSpec extends Specification {
          |%YAML 1.2
          |---
          |Doc2""".strip shouldParseAs
-        Seq(
-          document("Doc1"),
-          Document.empty,
-          document("Doc2", Seq(YamlDirective("1.2"))))
+        (document("Doc1") :+
+          Document.empty) ++
+          document("Doc2", Seq(YamlDirective("1.2")))
     }
 
     "handle litteral scalars" - {
 
       "|\nDoc" shouldParseAs oneDocument
-      "|\n\nDoc" shouldParseAs Seq(document("\nDoc"))
-      "| #Comment\n\nDoc" shouldParseAs Seq(document("\nDoc"))
+      "|\n\nDoc" shouldParseAs document("\nDoc")
+      "| #Comment\n\nDoc" shouldParseAs document("\nDoc")
       """||
          | literal
          |  text
-         |""".strip shouldParseAs Seq(document("literal\n text\n"))
+         |""".strip shouldParseAs document("literal\n text\n")
       s"""||
           |${' '}
-          | literal
-          |""".strip shouldParseAs Seq(document("\nliteral\n"))
+          | literal # Comment
+          |""".strip shouldParseAs document("\nliteral\n")
       """||
          | # Not a comment
-         |  text""".strip shouldParseAs(Seq(document("# Not a comment\n text")))
+         |  text""".strip shouldParseAs document("# Not a comment\n text")
+      """||1
+         |  text""".strip shouldParseAs document(" text")
+      """||1
+         |  # Comment
+         |  text""".strip shouldParseAs document("\n text")
+    }
+
+    "handle folded scalars" - {
+      """|>
+         |folded
+         |text
+         |""".strip shouldParseAs document("folded text\n")
     }
   }
 

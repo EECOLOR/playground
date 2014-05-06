@@ -41,7 +41,7 @@ object RawYamlParser extends Parsers {
 
   def parse(s: String) =
     try {
-      yamlStream(new CharSequenceReader(s) with SkippingReader {
+      yamlStream(new CharSequenceReader(s) with ContextReader {
         val in = new YamlReader(this, failure("nothing"))
       })
     } catch {
@@ -132,15 +132,32 @@ object RawYamlParser extends Parsers {
   }
 
   lazy val documentContent =
-    literalScalar | scalar
+    foldedScalar | literalScalar | scalar
 
   /* SCALAR */
 
+  lazy val foldedScalar = whileIgnoring(comment) apply
+    '>' ~> indentation <~ break >> { i =>
+      whileIgnoring(indentationOf(i) | comment) apply
+        paragraph.* ^^ Scalar
+    }
+
+  lazy val paragraph =
+    lineContent ~ (break ~> lineContent).* ~ break ^^ {
+      case firstLine ~ lines ~ lastBreak =>
+        lines.mkString(firstLine + " ", " ", lastBreak)
+    }
+
+  lazy val lineContent =
+      (not(break) >> documentChar).+ ^^ (_.mkString)
+
   lazy val literalScalar = whileIgnoring(comment) apply
-    '|' ~> break ~>
-      commit(withDetectedIndentation { i =>
-        whileIgnoring(indentationOf(i) | comment) apply scalar
-      })
+    '|' ~> indentation <~ break >> { i =>
+      whileIgnoring(indentationOf(i) | comment) apply scalar
+    }
+
+  lazy val indentation =
+    (not('0') >> decDigitChar) ^^ (_.asDigit) | detectIndentation
 
   lazy val scalar =
     documentChar.+ ^^ Scalar
@@ -169,7 +186,10 @@ object RawYamlParser extends Parsers {
 
   /* CHARS */
 
-  lazy val break = (cariageReturn ~ lineFeed) | cariageReturn | lineFeed
+  lazy val windowsBreak = (cariageReturn ~ lineFeed) ^^^ "\r\n"
+  lazy val macBreak = cariageReturn ^^^ "\r"
+  lazy val linuxBreak = lineFeed ^^^ "\n"
+  lazy val break = windowsBreak | macBreak | linuxBreak
   lazy val lineFeed = 0xA.p
   lazy val cariageReturn = 0xD.p
 
@@ -205,21 +225,36 @@ object RawYamlParser extends Parsers {
 
   /* DETECTION */
 
-  private def withDetectedIndentation[T](parser: Int => Parser[T]) =
-    whileIgnoring(nothing) apply guard(detectIndentation) >> parser
-
   lazy val detectIndentation =
-    (startOfLine ~ white.* ~ break).* ~>
-      startOfLine ~> white.* <~ nonWhite ^^ (_.size)
+    notConsuming {
+      whileIgnoring(nothing) {
+        findNextLine ~>
+          emptyLine.* ~>
+          startOfLine ~> white.* <~ nonWhite ^^ (_.size)
+      }
+    }
+
+  lazy val emptyLine =
+    startOfLine ~> white.* ~> break
+
+  lazy val findNextLine =
+    (not(startOfLine) >> allowedChar).*
 
   /* UTILS */
+
+  def printRest(prefix: String = "") =
+    guard(allowedChar.* ^^ { x =>
+      println(prefix + ": '" + x.mkString + "'")
+    })
+
+  def notConsuming[T](p: => Parser[T]): Parser[T] = guard(p)
 
   private def whileIgnoring[T](skip: Parser[_]) =
     (parser: Parser[T]) => changeContext(_ skipping skip)(parser)
 
-  private def changeContext[T](change: SkippingReader => SkippingReader)(parser: Parser[T]): Parser[T] =
+  private def changeContext[T](change: ContextReader => ContextReader)(parser: Parser[T]): Parser[T] =
     new Parser[T] {
-      def apply(in: Input) = parser(change(in.asInstanceOf[SkippingReader]))
+      def apply(in: Input) = parser(change(in.asInstanceOf[ContextReader]))
     }
 
   implicit def stringToParser(s: String) = s.p
@@ -320,12 +355,12 @@ object RawYamlParser extends Parsers {
   implicit def toConstructor1[A, B, C](constructor: A => B)(implicit ev: C => A): C => B =
     c => constructor(c)
 
-  trait SkippingReader extends Reader[Char] {
+  trait ContextReader extends Reader[Char] {
     val in: Reader[Char]
     def skipping(skip: Parser[_]) = new YamlReader(in, skip)
   }
 
-  class YamlReader(val in: Reader[Char], skip: Parser[_]) extends Reader[Char] with SkippingReader {
+  class YamlReader(val in: Reader[Char], skip: Parser[_]) extends Reader[Char] with ContextReader {
     lazy val current = {
       skip(in) match {
         case Success(_, next) if (next.pos == in.pos) => next
