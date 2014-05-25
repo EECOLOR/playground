@@ -6,13 +6,17 @@ import sbt.testing.SubclassFingerprint
 import sbt.testing.TestSelector
 
 object TaskDefFactory {
-  def create(qualifiedName: String, isObject: Boolean = false) = {
-    val fingerprint =
-      new SubclassFingerprint {
-        val isModule = isObject
-        val requireNoArgConstructor = true
-        val superclassName = "org.qirx.littlespec.Specification"
-      }
-    new SbtTaskDef(qualifiedName, fingerprint, false, Array(new TestSelector(qualifiedName)))
+
+  case class FingerPrint(isObject: Boolean) extends SubclassFingerprint {
+    val isModule = isObject
+    val requireNoArgConstructor = true
+    val superclassName = "org.qirx.littlespec.Specification"
   }
+
+  def create(qualifiedName: String, isObject: Boolean = false) =
+    new SbtTaskDef(
+        qualifiedName,
+        FingerPrint(isObject),
+        false,
+        Array(new TestSelector(qualifiedName)))
 }

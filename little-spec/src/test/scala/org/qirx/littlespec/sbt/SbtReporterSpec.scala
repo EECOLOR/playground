@@ -15,6 +15,8 @@ import org.qirx.littlespec.Failure
 import org.qirx.littlespec.Success
 import org.qirx.littlespec.Result
 import org.qirx.littlespec.UnexpectedFailure
+import sbt.testing.Fingerprint
+import sbt.testing.Selector
 
 object SbtReporterSpec extends Specification {
 
@@ -23,112 +25,123 @@ object SbtReporterSpec extends Specification {
   "DefaultSbtReporter should" - {
 
     "report nothing if there are no results" - {
-      val in = Seq.empty
-      val out = report(in)
+      val (events, logs) = report()
 
-      out.events is Seq.empty
-      out.logs is Seq.empty
+      events is Seq.empty
+      logs is Seq.empty
     }
 
-    "report the correct information from the taskDef" - {
-      val taskDef = TaskDefFactory.create("test")
-      val in = Seq(Success("")(1.second))
-      val out = report(in, taskDef)
+    "report the correct information" - {
+      val (events, _) = report(Success("")(1.second))
 
-      val event = out.events.head
-      event.fingerprint is taskDef.fingerprint
-      event.fullyQualifiedName is taskDef.fullyQualifiedName
-      event.selector is taskDef.selectors.head
-      event.throwable is new OptionalThrowable()
+      events is Seq(Event(Status.Success, 1000))
     }
 
     "report success" - {
-      testResult(
-        Success("test")(1.second), Status.Success, 1000, "info", "test")
+
+      val (events, logs) = report(Success("test")(1.second))
+
+      events is Seq(Event(Status.Success, 1000))
+
+      logs is Seq(infoLog("test"))
+
     }
 
     "report failure" - {
-      val in = Failure("test", "message")
-      val out = report(Seq(in))
+      val (events, logs) = report(Failure("test", "message"))
 
-      out.events.size is 1
-      val event = out.events.head
-      event.status is Status.Failure
-      event.duration is 0
+      events is Seq(Event(Status.Failure))
 
-      out.logs.size is 2
-      out.logs is Seq(("error", "test"), ("error", "  message"))
+      logs is Seq(
+        failureLog("test"),
+        failureLog("  message"))
     }
 
     "report unexpected failure" - {
-      val in = UnexpectedFailure("test", new Exception("message"))
-      val out = report(Seq(in))
+      val (events, logs) = report(UnexpectedFailure("test", new Exception("message")))
 
-      out.events.size is 1
-      val event = out.events.head
-      event.status is Status.Error
-      event.duration is 0
+      events is Seq(Event(Status.Error))
 
-      out.logs.size is 3
-      out.logs.take(2) is Seq(("error", "test"), ("error", "  message"))
-      out.logs.drop(2).head isLike {
-        case ("trace", _) => success
-      }
+      logs is Seq(
+        errorLog("test"),
+        errorLog("  message"),
+        "trace" -> "[suppressed]"
+      )
     }
 
     "report pending" - {
-      testResult(
-        Pending("test", "message"), Status.Pending, 0, "warn", "test - message")
+      val (events, logs) = report(Pending("test", "message"))
+
+      events is Seq(Event(Status.Pending))
+
+      logs is Seq("warn" -> "test - message")
     }
 
     "report nested" - {
-      val in = CompoundResult("test", Seq.empty)
-      val out = report(Seq(in))
+      val (events, logs) = report(CompoundResult("test", Seq.empty))
 
-      out.events.size is 0
+      events is Seq.empty
 
-      out.logs.head is ("info", "test")
+      logs is Seq(infoLog("test"))
     }
 
     "report with indentation" - {
-      val in = CompoundResult("outer", Seq(Success("inner")(1.second)))
-      val out = report(Seq(in))
+      val (_, logs) = report(CompoundResult("outer", Seq(Success("inner")(1.second))))
 
-      out.logs is Seq(("info", "outer"), ("info", "  inner"))
+      logs is Seq(
+        infoLog("outer"),
+        infoLog("  inner"))
     }
 
-    "report multiline" - {
-      val in = CompoundResult("outer", Seq(Success("inner1\ninner2\r\ninner3\rinner4")(1.second)))
-      val out = report(Seq(in))
+    "report multiline correctly for different systems" - {
+      val (_, logs) = report(CompoundResult("outer",
+        Seq(Success("inner1\ninner2\r\ninner3\rinner4")(1.second))))
 
-      out.logs is Seq(("info", "outer"), ("info", "  inner1\n  inner2\n  inner3\n  inner4"))
+      logs is Seq(
+        infoLog("outer"),
+        infoLog("  inner1\n  inner2\n  inner3\n  inner4"))
     }
   }
 
-  def testResult(in: Result, status: Status, duration: Long, method: String, message: String) = {
-    val out = report(Seq(in))
+  private def errorLog(message: String) =
+    "error" -> message
 
-    out.events.size is 1
-    val event = out.events.head
-    event.status is status
-    event.duration is duration
+  private def infoLog(message: String) =
+    "info" -> message
 
-    out.logs.size is 1
-    out.logs.head is (method, message)
-  }
+  private def failureLog(message: String) =
+    "error" -> message
 
-  def report(in: Seq[Result], taskDef: TaskDef = TaskDefFactory.create("test")): HandlerAndLogger = {
+  def report(in: Result*): (Seq[Event], Seq[(String, String)]) = {
     val out = new HandlerAndLogger
     reporter.report(taskDef, out, Array(out), in)
-    out
+    (out.events, out.logs)
+  }
+
+  private val taskDef = TaskDefFactory.create("test")
+
+  case class Event(
+    status: Status,
+    duration: Long,
+    fullyQualifiedName: String,
+    fingerprint: Fingerprint,
+    selector: Selector,
+    throwable: OptionalThrowable)
+
+  object Event {
+    def apply(event: sbt.testing.Event): Event =
+      Event(event.status, event.duration, event.fullyQualifiedName, event.fingerprint, event.selector, event.throwable)
+
+    def apply(status: Status, duration: Long = 0, throwable: OptionalThrowable = new OptionalThrowable): Event =
+      apply(status, duration, taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.selectors.head, throwable)
   }
 
   class HandlerAndLogger extends EventHandler with Logger {
     var events = Seq.empty[Event]
     var logs = Seq.empty[(String, String)]
 
-    def handle(event: Event): Unit =
-      events :+= event
+    def handle(event: sbt.testing.Event): Unit =
+      events :+= Event(event)
 
     val ansiCodesSupported = true
 
@@ -136,7 +149,7 @@ object SbtReporterSpec extends Specification {
     def error(message: String): Unit = logs :+= "error" -> message
     def info(message: String): Unit = logs :+= "info" -> message
     def warn(message: String): Unit = logs :+= "warn" -> message
-    def trace(message: Throwable): Unit = logs :+= "trace" -> ""
+    def trace(message: Throwable): Unit = logs :+= "trace" -> "[suppressed]"
 
   }
 }
