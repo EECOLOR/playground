@@ -26,6 +26,7 @@ trait SbtReporter {
 }
 
 class DefaultSbtReporter extends SbtReporter {
+
   def report(taskDef: TaskDef, eventHandler: EventHandler, loggers: Seq[Logger], results: Seq[Result]): Unit = {
 
     val event = eventFor(taskDef, eventHandler) _
@@ -92,7 +93,7 @@ class DefaultSbtReporter extends SbtReporter {
         val throwable = new OptionalThrowable
       })
 
-  private def logStringFor(loggers: Seq[Logger])(level: Int, extraSpace:Boolean)(method: Logger => String => Unit, message: String, indicator: Option[String]) = {
+  private def logStringFor(loggers: Seq[Logger])(level: Int, extraSpace: Boolean)(method: Logger => String => Unit, message: String, indicator: Option[String]) = {
     val (indicatorWithSeparator, indicatorIndentation) =
       indicator.map(_ + " " -> "  ").getOrElse("" -> "")
     val levelIndentation = "  " * level
@@ -105,12 +106,23 @@ class DefaultSbtReporter extends SbtReporter {
           sep = "\n" + levelIndentation + compensation + indicatorIndentation,
           end = "")
 
-    logFor(loggers)(method, levelMessage)
+    logFor(loggers, stringColorRemover)(method, levelMessage)
   }
 
-  private def logFor[T](loggers: Seq[Logger])(method: Logger => T => Unit, message: T) = {
+  private def logFor[T](loggers: Seq[Logger], colorRemover: T => T = identity[T] _)(
+    method: Logger => T => Unit, message: T) =
+
     loggers.foreach { logger =>
-      method(logger)(message)
+
+      val cleanMessage =
+        if (logger.ansiCodesSupported) message
+        else colorRemover(message)
+
+      method(logger)(cleanMessage)
     }
+
+  private def stringColorRemover(message: String) = {
+    val colorPattern = raw"\u001b\[\d{1,2}m"
+    message.replaceAll(colorPattern, "")
   }
 }
