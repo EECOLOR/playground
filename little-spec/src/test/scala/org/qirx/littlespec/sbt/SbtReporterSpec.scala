@@ -43,7 +43,9 @@ object SbtReporterSpec extends Specification {
 
       events is Seq(Event(Status.Success, 1000))
 
-      logs is Seq(infoLog("test"))
+      logs is Seq(
+        infoLog(s" $successIndicator test"),
+        emptyLine)
 
     }
 
@@ -53,8 +55,9 @@ object SbtReporterSpec extends Specification {
       events is Seq(Event(Status.Failure))
 
       logs is Seq(
-        failureLog("test"),
-        failureLog("  message"))
+        errorLog(s"$failureIndicator test"),
+        errorLog(s"    message"),
+        emptyLine)
     }
 
     "report unexpected failure" - {
@@ -63,9 +66,10 @@ object SbtReporterSpec extends Specification {
       events is Seq(Event(Status.Error))
 
       logs is Seq(
-        errorLog("test"),
-        errorLog("  message"),
-        "trace" -> "[suppressed]"
+        errorLog(s"$failureIndicator test"),
+        errorLog(s"    message"),
+        "trace" -> "[suppressed]",
+        emptyLine
       )
     }
 
@@ -74,7 +78,11 @@ object SbtReporterSpec extends Specification {
 
       events is Seq(Event(Status.Pending))
 
-      logs is Seq("warn" -> "test - message")
+      val coloredMessage = warnColor + "message" + resetColor
+
+      logs is Seq(
+        "warn" -> s" $pendingIndicator test - $coloredMessage",
+        emptyLine)
     }
 
     "report nested" - {
@@ -82,15 +90,30 @@ object SbtReporterSpec extends Specification {
 
       events is Seq.empty
 
-      logs is Seq(infoLog("test"))
+      logs is Seq(
+        infoLog(" test"),
+        emptyLine)
     }
 
-    "report with indentation" - {
+    "report nested with indentation" - {
       val (_, logs) = report(CompoundResult("outer", Seq(Success("inner")(1.second))))
 
       logs is Seq(
-        infoLog("outer"),
-        infoLog("  inner"))
+        infoLog(s" outer"),
+        infoLog(s"   $successIndicator inner"),
+        emptyLine)
+    }
+
+    "report nested with extra nesting" - {
+      val (_, logs) = report(CompoundResult("outer", Seq(CompoundResult("inner", Seq(Success("inner")(1.second), Failure("inner", "message"))))))
+
+      logs is Seq(
+        infoLog(s" outer"),
+        infoLog(s"   - inner"),
+        infoLog(s"     $successIndicator inner"),
+        errorLog(s"    $failureIndicator inner"),
+        errorLog(s"        message"),
+        emptyLine)
     }
 
     "report multiline correctly for different systems" - {
@@ -98,10 +121,22 @@ object SbtReporterSpec extends Specification {
         Seq(Success("inner1\ninner2\r\ninner3\rinner4")(1.second))))
 
       logs is Seq(
-        infoLog("outer"),
-        infoLog("  inner1\n  inner2\n  inner3\n  inner4"))
+        infoLog(s" outer"),
+        infoLog(s"   $successIndicator inner1\n     inner2\n     inner3\n     inner4"),
+        emptyLine)
     }
   }
+
+  private val errorColor = "\u001b[31m"
+  private val successColor = "\u001b[32m"
+  private val infoColor = "\u001b[36m"
+  private val warnColor = "\u001b[33m"
+
+  private val resetColor = "\u001b[0m"
+
+  private val pendingIndicator = warnColor + "o" + resetColor
+  private val successIndicator = successColor + "+" + resetColor
+  private val failureIndicator = errorColor + "X" + resetColor
 
   private def errorLog(message: String) =
     "error" -> message
@@ -109,14 +144,13 @@ object SbtReporterSpec extends Specification {
   private def infoLog(message: String) =
     "info" -> message
 
-  private def failureLog(message: String) =
-    "error" -> message
-
   def report(in: Result*): (Seq[Event], Seq[(String, String)]) = {
     val out = new HandlerAndLogger
     reporter.report(taskDef, out, Array(out), in)
     (out.events, out.logs)
   }
+
+  val emptyLine = infoLog("")
 
   private val taskDef = TaskDefFactory.create("test")
 

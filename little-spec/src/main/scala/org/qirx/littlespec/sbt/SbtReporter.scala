@@ -32,32 +32,54 @@ class DefaultSbtReporter extends SbtReporter {
     val logLevel = logStringFor(loggers) _
 
     def report(results: Seq[Result], level: Int): Unit = {
-      val log = logLevel(level)
+      val log = logLevel(level, true)
+      val logError = logLevel(level, false)
 
       results.foreach {
         case CompoundResult(title, results) =>
-          log(_.info, title)
+          val indicator = if (level == 0) noIndicator else compoundIndicator
+          log(_.info, title, indicator)
           report(results, level + 1)
+
         case s @ Success(title) =>
           event(Status.Success, s.duration)
-          log(_.info, title)
-        case UnexpectedFailure(title, t) =>
+          log(_.info, title, successIndicator)
+
+        case UnexpectedFailure(title, throwable) =>
           event(Status.Error, Duration.Zero)
-          log(_.error, title)
-          logLevel(level + 1)(_.error, t.getMessage)
-          logFor(loggers)(_.trace, t)
+          logError(_.error, title, failureIndicator)
+          logLevel(level + 2, false)(_.error, throwable.getMessage, noIndicator)
+          logFor(loggers)(_.trace, throwable)
+
         case Failure(title, message) =>
           event(Status.Failure, Duration.Zero)
-          log(_.error, title)
-          logLevel(level + 1)(_.error, message)
+          logError(_.error, title, failureIndicator)
+          logLevel(level + 2, false)(_.error, message, noIndicator)
+
         case Pending(title, message) =>
           event(Status.Pending, Duration.Zero)
-          log(_.warn, title + " - " + message)
+          val coloredMessage = warningColor + message + resetColor
+          log(_.warn, title + " - " + coloredMessage, pendingIndicator)
       }
     }
 
     report(results, 0)
+    if (results.nonEmpty) logEmptyLine(loggers)
   }
+
+  private val errorColor = "\u001b[31m"
+  private val successColor = "\u001b[32m"
+  private val warningColor = "\u001b[33m"
+  private val resetColor = "\u001b[0m"
+
+  private val noIndicator = None
+  private val successIndicator = Some(successColor + "+" + resetColor)
+  private val pendingIndicator = Some(warningColor + "o" + resetColor)
+  private val failureIndicator = Some(errorColor + "X" + resetColor)
+  private val compoundIndicator = Some("-")
+
+  private def logEmptyLine(loggers: Seq[Logger]) =
+    logStringFor(loggers)(level = 0, extraSpace = false)(_.info, "", noIndicator)
 
   private def eventFor(taskDef: TaskDef, eventHandler: EventHandler)(actualStatus: Status, actualDuration: FiniteDuration) =
     eventHandler.handle(
@@ -70,12 +92,18 @@ class DefaultSbtReporter extends SbtReporter {
         val throwable = new OptionalThrowable
       })
 
-  private def logStringFor(loggers: Seq[Logger])(level: Int)(method: Logger => String => Unit, message: String) = {
+  private def logStringFor(loggers: Seq[Logger])(level: Int, extraSpace:Boolean)(method: Logger => String => Unit, message: String, indicator: Option[String]) = {
+    val (indicatorWithSeparator, indicatorIndentation) =
+      indicator.map(_ + " " -> "  ").getOrElse("" -> "")
     val levelIndentation = "  " * level
+    val compensation = if (extraSpace) " " else ""
     val levelMessage =
       message
         .split("(\r\n|\r|\n)")
-        .mkString(levelIndentation, "\n" + levelIndentation, "")
+        .mkString(
+          start = levelIndentation + compensation + indicatorWithSeparator,
+          sep = "\n" + levelIndentation + compensation + indicatorIndentation,
+          end = "")
 
     logFor(loggers)(method, levelMessage)
   }
