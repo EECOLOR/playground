@@ -53,33 +53,34 @@ object TaskSpec extends Specification {
 
       "for objects" - testRunSpecification(forObject = true)
     }
-  }
 
-  "report the results correctly" - {
+    "report the results correctly" - {
 
-    val results = Seq(Success("test")(1.second))
-    var reportCalls: Seq[(TaskDef, EventHandler, Seq[Logger], Seq[Result])] = Seq.empty
+      val results = Seq(Success("test")(1.second))
+          var reportCalls: Seq[(TaskDef, EventHandler, Seq[Logger], Seq[Result])] = Seq.empty
 
-    val stubRunner =
-      new SpecificationRunner {
+          val stubRunner =
+          new SpecificationRunner {
         def run(specification: Specification) = results
       }
 
-    val mockReporter =
-      new SbtReporter {
+      val mockReporter =
+          new SbtReporter {
         def report(taskDef: TaskDef, eventHandler: EventHandler, loggers: Seq[Logger], results: Seq[Result]): Unit =
-          reportCalls :+= (taskDef, eventHandler, loggers, results)
+            reportCalls :+= (taskDef, eventHandler, loggers, results)
       }
 
-    val task = createTask(stubRunner, mockReporter)
+      val task = createTask(stubRunner, mockReporter)
 
-    val loggers = Array(noOpLogger)
+          val loggers = Array(noOpLogger)
 
-    task.execute(noOpEventHandler, loggers)
+          task.execute(noOpEventHandler, loggers)
 
-    val expectedReportCall = (task.taskDef, noOpEventHandler, loggers.toSeq, results)
-    reportCalls is Seq(expectedReportCall)
+          val expectedReportCall = (task.taskDef, noOpEventHandler, loggers.toSeq, results)
+          reportCalls is Seq(expectedReportCall)
+    }
   }
+
 
   val testClass = classOf[EmptyTestSpecificationClass]
   val testObject = EmptyTestSpecificationObject.getClass
