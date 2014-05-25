@@ -8,7 +8,7 @@ import org.qirx.littlespec.Specification
 
 class RunnerSpec extends Specification {
 
-  val location = new File("little-spec/src/test/resources/testClasses")
+  val location = new File("little-spec/testClasses")
   val testClassLoader = new URLClassLoader(Array(location.toURI.toURL), getClass.getClassLoader)
   def newRunner = new Runner(Array.empty, Array.empty, testClassLoader)
 

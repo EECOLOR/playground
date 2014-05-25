@@ -6,7 +6,7 @@ lazy val `little-spec` = project
   .in( file("little-spec") )
 
 lazy val `little-spec-test-classes` = project
-  .in( file("little-spec/src/test/resources/testClasses") )
+  .in( file("little-spec/testClasses") )
   .dependsOn(`little-spec`)  
 
 // compile test classes before running test in little spec
