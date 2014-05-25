@@ -54,7 +54,7 @@ object RawYamlParser extends Parsers {
 
   lazy val anyComment = commentLine | comment
   lazy val commentLine = startOfLine ~> white.* ~> commentText.? <~ (break | endOfFile)
-  lazy val comment = white.+ ~> commentText
+  lazy val comment = (startOfLine | white.+) ~> commentText
   lazy val commentText = '#' ~> nonBreak.*
 
   /* DOCUMENTS */
@@ -139,17 +139,47 @@ object RawYamlParser extends Parsers {
   lazy val foldedScalar = whileIgnoring(comment) apply
     '>' ~> indentation <~ break >> { i =>
       whileIgnoring(indentationOf(i) | comment) apply
-        paragraph.* ^^ Scalar
+        (moreWhiteSpaceParagraph | paragraph | (space.* ~> break)).* ^^ Scalar
+    }
+
+  lazy val moreWhiteSpaceParagraph =
+    moreWhiteSpaceLine.+ ^^ (_.mkString)
+
+  lazy val moreWhiteSpaceLine =
+    whiteLineContent ~ breakAndWhiteLineContent.* ~ break ^^ {
+      case whiteLineContent ~ lines ~ break =>
+        whiteLineContent + lines.mkString + break
+    }
+
+  lazy val breakAndWhiteLineContent =
+    (break ~ whiteLineContent) ^^ {
+      case break ~ whiteLineContent => break + whiteLineContent
+    }
+
+  lazy val whiteLineContent =
+    white.+ ~ lineContent ^^ {
+      case white ~ lineContent =>
+        white + lineContent
     }
 
   lazy val paragraph =
-    lineContent ~ (break ~> lineContent).* ~ break ^^ {
-      case firstLine ~ lines ~ lastBreak =>
-        lines.mkString(firstLine + " ", " ", lastBreak)
+    lineContent ~ (breakAndContent).* ~ (break | endOfFile ^^^ "") ^^ {
+      case firstLine ~ content ~ lastBreak =>
+        firstLine + content.mkString + lastBreak
     }
 
+  lazy val breakAndContent =
+    (trimmedLines | breakAsSpace) ~ lineContent ^^ {
+      case break ~ content => break + content
+    }
+
+  lazy val breakAsSpace = break ^^^ " "
+
+  lazy val trimmedLines =
+    break ~> (space.* ~> break).+ ^^ (_.mkString)
+
   lazy val lineContent =
-      (not(break) >> documentChar).+ ^^ (_.mkString)
+    not(white) ~> (not(break) >> documentChar).+ ^^ (_.mkString)
 
   lazy val literalScalar = whileIgnoring(comment) apply
     '|' ~> indentation <~ break >> { i =>
@@ -230,12 +260,12 @@ object RawYamlParser extends Parsers {
       whileIgnoring(nothing) {
         findNextLine ~>
           emptyLine.* ~>
-          startOfLine ~> white.* <~ nonWhite ^^ (_.size)
+          startOfLine ~> space.* ^^ (_.size)
       }
     }
 
   lazy val emptyLine =
-    startOfLine ~> white.* ~> break
+    startOfLine ~> space.* ~> break
 
   lazy val findNextLine =
     (not(startOfLine) >> allowedChar).*

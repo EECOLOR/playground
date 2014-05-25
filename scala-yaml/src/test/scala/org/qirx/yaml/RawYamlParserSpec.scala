@@ -6,15 +6,16 @@ object RawYamlParserSpec extends Specification {
   import RawYamlParser._
 
   implicit class StringEnhancements(s: String) {
+    private def format(s: String) =
+      s.replaceAll(" ", "·")
+        .replaceAll("\t", "→")
+        .replaceAll("(\r\n|\r|\n)", "↓\n")
+
     def shouldParseAs(expected: Seq[_]): FragmentBody = {
       parse(s) isLike {
         case Success(result, _) =>
           result is expected withMessage { original =>
-            val formattedString = s
-              .replaceAll(" ", "·")
-              .replaceAll("\t", "→")
-              .replaceAll("(\r\n|\r|\n)", "↓\n")
-            s"$formattedString is not parsed as $expected but as $result"
+            s"${format(s)} is not parsed as ${format(expected)} but as ${format(result)}"
           }
       }
     }
@@ -243,6 +244,9 @@ object RawYamlParserSpec extends Specification {
       """||
          | # Not a comment
          |  text""".strip shouldParseAs document("# Not a comment\n text")
+      s"""||
+          | ${'\t'}
+          |  text""".strip shouldParseAs document("\t\n text")
       """||1
          |  text""".strip shouldParseAs document(" text")
       """||1
@@ -251,10 +255,54 @@ object RawYamlParserSpec extends Specification {
     }
 
     "handle folded scalars" - {
+      s"""|>
+          |  trimmed
+          |${"  "}
+          |${' '}
+          |
+          |  as
+          |  space""".strip shouldParseAs document("trimmed\n\n\nas space")
+
       """|>
          |folded
          |text
          |""".strip shouldParseAs document("folded text\n")
+
+      s"""|>
+          | folded
+          | text
+          |  not
+          |  folded
+          |""".strip shouldParseAs document("folded text\n not\n folded\n")
+
+      s"""|>
+          |  foo${' '}
+          |${' '}
+          |  ${'\t'} bar
+          |
+          |  baz
+          |""".strip shouldParseAs document("foo \n\n\t bar\n\nbaz\n")
+
+      """|>
+         |
+         | folded
+         | line
+         |
+         | next
+         | line
+         |   * bullet
+         |
+         |   * list
+         |   * lines
+         |
+         | last
+         | line
+         |""".strip shouldParseAs document("\nfolded line\nnext line\n  * bullet\n\n  * list\n  * lines\n\nlast line\n")
+
+      s"""|>
+          | ${'\t'}
+          | detected
+          |""".strip shouldParseAs document("\t detected\n") withMessage "This is as far as I can see a bug in the specification"
     }
   }
 
