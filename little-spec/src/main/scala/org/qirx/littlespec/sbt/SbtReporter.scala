@@ -43,20 +43,18 @@ class DefaultSbtReporter extends SbtReporter {
           log(_.info, title, successIndicator)
 
         case UnexpectedFailure(title, throwable) =>
+          val logExceptionLine = logLevel(level + 2, false)(_.error, _: String, noIndicator)
+
           event(Status.Error, Duration.Zero)
           logError(_.error, title, failureIndicator)
-          logLevel(level + 2, false)(_.error, throwable.getMessage, noIndicator)
+          logException(throwable, logExceptionLine)
           logFor(loggers)(_.trace, throwable)
 
         case Failure(title, message, failure) =>
-          val stack = filteredStackTrace(failure)
-          val failureLocation =
-            stack.headOption.map { s =>
-              " (" + s.getFileName + ":" + s.getLineNumber + ")"
-            }.getOrElse("")
+          val location = getLocationOf(failure)
 
           event(Status.Failure, Duration.Zero)
-          logError(_.error, title + failureLocation, failureIndicator)
+          logError(_.error, title + location, failureIndicator)
           logLevel(level + 2, false)(_.error, message, noIndicator)
 
         case Pending(title, message) =>
@@ -69,25 +67,6 @@ class DefaultSbtReporter extends SbtReporter {
     report(results, 0)
     if (results.nonEmpty) logEmptyLine(loggers)
   }
-
-  private def isLittleSpecTest(className: String) =
-    className.startsWith("org.qirx.littlespec.") && className.endsWith("Spec")
-
-  private val ignoredPackages = Seq("org.qirx.littlespec.", "scala.", "java.", "sbt.")
-  private val pattern =
-    ignoredPackages
-      .mkString("^(", "|", ")[^$]*")
-      .replaceAll("\\.", "\\\\.")
-
-  private def filteredStackTrace(throwable: Throwable) =
-    throwable.getStackTrace
-      .dropWhile { s =>
-        val className = s.getClassName.split("\\$").head
-
-        val ignore = className matches pattern
-
-        !isLittleSpecTest(className) && ignore
-      }
 
   private val errorColor = "\u001b[31m"
   private val successColor = "\u001b[32m"
@@ -146,4 +125,41 @@ class DefaultSbtReporter extends SbtReporter {
     val colorPattern = raw"\u001b\[\d{1,2}m"
     message.replaceAll(colorPattern, "")
   }
+
+  def logException(throwable: Throwable, log: String => Unit):Unit = {
+    log(throwable.getClass.getSimpleName + ": " + throwable.getMessage)
+
+    filteredStackTrace(throwable)
+      .map { s => s"- ${s.getFileName}:${s.getLineNumber} (${classNameOf(s)})" }
+      .distinct
+      .foreach(log)
+
+    Option(throwable.getCause).foreach { x =>
+      log("== Caused by ==")
+      logException(x, log)
+    }
+  }
+
+  private def filteredStackTrace(throwable: Throwable) =
+    throwable.getStackTrace.filter { s =>
+      val className = classNameOf(s)
+      isLittleSpecTest(className) || !(className matches pattern)
+    }
+
+  private def getLocationOf(throwable: Throwable) =
+    filteredStackTrace(throwable).headOption.map { s =>
+      " (" + s.getFileName + ":" + s.getLineNumber + ")"
+    }.getOrElse("")
+
+  private def isLittleSpecTest(className: String) =
+    className.startsWith("org.qirx.littlespec.") && className.endsWith("Spec")
+
+  private val ignoredPackages = Seq("org.qirx.littlespec.", "scala.", "java.", "sbt.")
+  private val pattern =
+    ignoredPackages
+      .mkString("^(", "|", ")[^$]*")
+      .replaceAll("\\.", "\\\\.")
+
+  private def classNameOf(s: StackTraceElement) =
+    s.getClassName.split("\\$").head
 }

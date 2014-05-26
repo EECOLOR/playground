@@ -65,15 +65,14 @@ class SbtReporterSpec extends Specification {
 
       "failure with correct location" - {
 
-        val stackTrace = Array(
+        val throwable = new Fragment.ThrowableFailure("failure")
+        throwable.setStackTrace(Array(
           new StackTraceElement("org.qirx.littlespec.Class", "abc", "LittleSpecClass", 666),
           new StackTraceElement("scala.Class", "abc", "ScalaClass", 666),
           new StackTraceElement("java.Class", "abc", "JavaClass", 666),
           new StackTraceElement("sbt.Class", "abc", "SbtClass", 666),
           new StackTraceElement("org_qirx_littlespec.Class", "abc", "TestClass", 333)
-        )
-        val throwable = new Fragment.ThrowableFailure("failure")
-        throwable.setStackTrace(stackTrace)
+        ))
 
         val (_, logs) = report(Failure("test", "message", throwable))
 
@@ -84,13 +83,71 @@ class SbtReporterSpec extends Specification {
       }
 
       "unexpected failure" - {
-        val (events, logs) = report(UnexpectedFailure("test", new Exception("message")))
+        val unexpectedFailure = new Exception("message")
+        val stackTrace = unexpectedFailure.getStackTrace.take(2).map { s =>
+          "SbtReporterSpec.scala:" + s.getLineNumber + " (org.qirx.littlespec.sbt.SbtReporterSpec)"
+        }
+        val (events, logs) = report(UnexpectedFailure("test", unexpectedFailure))
 
         events is Seq(Event(Status.Error))
 
         logs is Seq(
           errorLog(s"$failureIndicator test"),
-          errorLog(s"    message"),
+          errorLog(s"    Exception: message"),
+          errorLog(s"    - ${stackTrace(0)}"),
+          errorLog(s"    - ${stackTrace(1)}"),
+          "trace" -> "[suppressed]",
+          emptyLine
+        )
+      }
+
+      "unexpected failure with correct stack trace" - {
+        val littlespec = new StackTraceElement("org.qirx.littlespec.Class", "abc", "LittleSpecClass", 666)
+        val sbt = new StackTraceElement("sbt.Class", "abc", "SbtClass", 666)
+        val java = new StackTraceElement("java.Class", "abc", "JavaClass", 666)
+        val scala = new StackTraceElement("scala.Class", "abc", "ScalaClass", 666)
+
+        val unexpectedFailure = new Exception("message")
+        unexpectedFailure.setStackTrace(Array(
+          littlespec, sbt, java, scala,
+          new StackTraceElement("org_qirx_littlespec.Class1", "abc", "TestClass1", 111),
+          littlespec, sbt, java, scala,
+          new StackTraceElement("org_qirx_littlespec.Class2", "abc", "TestClass2", 222),
+          littlespec, sbt, java, scala
+        ))
+
+        val (events, logs) = report(UnexpectedFailure("test", unexpectedFailure))
+
+        logs is Seq(
+          errorLog(s"$failureIndicator test"),
+          errorLog(s"    Exception: message"),
+          errorLog(s"    - TestClass1:111 (org_qirx_littlespec.Class1)"),
+          errorLog(s"    - TestClass2:222 (org_qirx_littlespec.Class2)"),
+          "trace" -> "[suppressed]",
+          emptyLine
+        )
+      }
+
+      "unexpected failure with cause" - {
+        def line(s:StackTraceElement) =
+        "SbtReporterSpec.scala:" + s.getLineNumber + " (org.qirx.littlespec.sbt.SbtReporterSpec)"
+
+        val unexpectedCause = new Exception("cause")
+        val stackTrace2 = unexpectedCause.getStackTrace.take(2).map(line)
+        val unexpectedFailure = new Exception("failure", unexpectedCause)
+        val stackTrace1 = unexpectedFailure.getStackTrace.take(2).map(line)
+
+        val (events, logs) = report(UnexpectedFailure("test", unexpectedFailure))
+
+        logs is Seq(
+          errorLog(s"$failureIndicator test"),
+          errorLog(s"    Exception: failure"),
+          errorLog(s"    - ${stackTrace1(0)}"),
+          errorLog(s"    - ${stackTrace1(1)}"),
+          errorLog(s"    == Caused by =="),
+          errorLog(s"    Exception: cause"),
+          errorLog(s"    - ${stackTrace2(0)}"),
+          errorLog(s"    - ${stackTrace2(1)}"),
           "trace" -> "[suppressed]",
           emptyLine
         )
@@ -227,6 +284,5 @@ class SbtReporterSpec extends Specification {
     def info(message: String): Unit = logs :+= "info" -> message
     def warn(message: String): Unit = logs :+= "warn" -> message
     def trace(message: Throwable): Unit = logs :+= "trace" -> "[suppressed]"
-
   }
 }
