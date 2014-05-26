@@ -1,24 +1,25 @@
 // format: +preserveDanglingCloseParenthesis
 package org.qirx.littlespec.sbt
 
-import org.qirx.littlespec.Specification
-import sbt.testing.Logger
-import sbt.testing.EventHandler
-import sbt.testing.Event
-import sbt.testing.Status
-import sbt.testing.TaskDef
-import scala.concurrent.duration._
-import sbt.testing.OptionalThrowable
-import org.qirx.littlespec.Pending
+import scala.concurrent.duration.DurationInt
+
 import org.qirx.littlespec.CompoundResult
 import org.qirx.littlespec.Failure
-import org.qirx.littlespec.Success
+import org.qirx.littlespec.Fragment
+import org.qirx.littlespec.Pending
 import org.qirx.littlespec.Result
+import org.qirx.littlespec.Specification
+import org.qirx.littlespec.Success
 import org.qirx.littlespec.UnexpectedFailure
-import sbt.testing.Fingerprint
-import sbt.testing.Selector
 
-object SbtReporterSpec extends Specification {
+import sbt.testing.EventHandler
+import sbt.testing.Fingerprint
+import sbt.testing.Logger
+import sbt.testing.OptionalThrowable
+import sbt.testing.Selector
+import sbt.testing.Status
+
+class SbtReporterSpec extends Specification {
 
   val reporter = new DefaultSbtReporter
 
@@ -52,12 +53,32 @@ object SbtReporterSpec extends Specification {
       }
 
       "failure" - {
-        val (events, logs) = report(Failure("test", "message"))
+        val (events, logs) = report(failureResult("test"))
 
         events is Seq(Event(Status.Failure))
 
         logs is Seq(
-          errorLog(s"$failureIndicator test"),
+          errorLog(s"$failureIndicator test ($fileName:$lineNumber)"),
+          errorLog(s"    message"),
+          emptyLine)
+      }
+
+      "failure with correct location" - {
+
+        val stackTrace = Array(
+          new StackTraceElement("org.qirx.littlespec.Class", "abc", "LittleSpecClass", 666),
+          new StackTraceElement("scala.Class", "abc", "ScalaClass", 666),
+          new StackTraceElement("java.Class", "abc", "JavaClass", 666),
+          new StackTraceElement("sbt.Class", "abc", "SbtClass", 666),
+          new StackTraceElement("org_qirx_littlespec.Class", "abc", "TestClass", 333)
+        )
+        val throwable = new Fragment.ThrowableFailure("failure")
+        throwable.setStackTrace(stackTrace)
+
+        val (_, logs) = report(Failure("test", "message", throwable))
+
+        logs is Seq(
+          errorLog(s"$failureIndicator test (TestClass:333)"),
           errorLog(s"    message"),
           emptyLine)
       }
@@ -107,13 +128,17 @@ object SbtReporterSpec extends Specification {
       }
 
       "nested with extra nesting" - {
-        val (_, logs) = report(CompoundResult("outer", Seq(CompoundResult("inner", Seq(successResult("inner"), Failure("inner", "message"))))))
+        val (_, logs) = report(
+          CompoundResult("outer", Seq(
+            CompoundResult("inner", Seq(
+              successResult("inner"),
+              failureResult("inner"))))))
 
         logs is Seq(
           infoLog(s" outer"),
           infoLog(s"   - inner"),
           infoLog(s"     $successIndicator inner"),
-          errorLog(s"    $failureIndicator inner"),
+          errorLog(s"    $failureIndicator inner ($fileName:$lineNumber)"),
           errorLog(s"        message"),
           emptyLine)
       }
@@ -133,8 +158,8 @@ object SbtReporterSpec extends Specification {
       val out = new HandlerAndLogger(ansiCodesSupported = false)
       reporter.report(taskDef, out, Array(out), Seq(successResult("test")))
       out.logs is Seq(
-          infoLog(" + test"),
-          emptyLine)
+        infoLog(" + test"),
+        emptyLine)
     }
   }
 
@@ -149,7 +174,14 @@ object SbtReporterSpec extends Specification {
   val successIndicator = successColor + "+" + resetColor
   val failureIndicator = errorColor + "X" + resetColor
 
-  def successResult(message:String) = Success(message)(1.second)
+  def successResult(message: String) = Success(message)(1.second)
+  def failureResult(message: String) = Failure(message, "message", throwableFailure)
+
+  val throwableFailure = new Fragment.ThrowableFailure("failure")
+  val (fileName, lineNumber) = {
+    val s = throwableFailure.getStackTrace.head
+    (s.getFileName, s.getLineNumber)
+  }
 
   def errorLog(message: String) =
     "error" -> message
@@ -183,7 +215,7 @@ object SbtReporterSpec extends Specification {
       apply(status, duration, taskDef.fullyQualifiedName, taskDef.fingerprint, taskDef.selectors.head, throwable)
   }
 
-  class HandlerAndLogger(val ansiCodesSupported:Boolean = true) extends EventHandler with Logger {
+  class HandlerAndLogger(val ansiCodesSupported: Boolean = true) extends EventHandler with Logger {
     var events = Seq.empty[Event]
     var logs = Seq.empty[(String, String)]
 

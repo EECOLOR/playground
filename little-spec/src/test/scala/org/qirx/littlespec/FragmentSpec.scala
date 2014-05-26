@@ -92,8 +92,8 @@ object FragmentSpec extends Specification {
 
       "capture failures" - {
         val message = "custom failure"
-        val result = execute(failWithMessage("custom failure"))
-        result is Failure(defaultTitle, message)
+        val result = execute(failWithMessage(message))
+        result is Failure(defaultTitle, message, failureWithMessage(message))
       }
 
       "correctly handle nested fragments" - {
@@ -115,7 +115,7 @@ object FragmentSpec extends Specification {
             }
             newFragment("level 2 - nested") {
               newFragment("level 3 - failure") {
-                throw Fragment.ThrowableFailure("failure")
+                failWithMessage("failure")
               }
               newFragment("level 3 - success") {
                 Fragment.Body.Success
@@ -131,7 +131,7 @@ object FragmentSpec extends Specification {
               Pending("level 2 - pending", "pending"),
               CompoundResult("level 2 - nested",
                 Seq(
-                  Failure("level 3 - failure", "failure"),
+                  Failure("level 3 - failure", "failure", failureWithMessage("failure")),
                   Success("level 3 - success")(0.millis)
                 )
               )
@@ -151,8 +151,11 @@ object FragmentSpec extends Specification {
   def execute(code: => Fragment.Body) =
     newFragment(code).execute
 
+  def failureWithMessage(message:String) =
+    Fragment.ThrowableFailure(message)
+
   def failWithMessage(message: String) =
-    throw Fragment.ThrowableFailure(message)
+    throw failureWithMessage(message)
 
   implicit def numeric[T <: Duration]: Numeric[T] =
     new Numeric[T] {

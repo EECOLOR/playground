@@ -1,25 +1,21 @@
 package org.qirx.littlespec.sbt
 
-import sbt.testing.EventHandler
-import sbt.testing.Logger
-import sbt.testing.TaskDef
-import org.qirx.littlespec.Result
-import sbt.testing.EventHandler
-import sbt.testing.Logger
-import sbt.testing.Event
-import sbt.testing.TaskDef
-import sbt.testing.Fingerprint
-import sbt.testing.Selector
-import sbt.testing.Status
-import sbt.testing.OptionalThrowable
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
-import org.qirx.littlespec.Pending
+
 import org.qirx.littlespec.CompoundResult
 import org.qirx.littlespec.Failure
-import org.qirx.littlespec.Success
+import org.qirx.littlespec.Pending
 import org.qirx.littlespec.Result
+import org.qirx.littlespec.Success
 import org.qirx.littlespec.UnexpectedFailure
+
+import sbt.testing.Event
+import sbt.testing.EventHandler
+import sbt.testing.Logger
+import sbt.testing.OptionalThrowable
+import sbt.testing.Status
+import sbt.testing.TaskDef
 
 trait SbtReporter {
   def report(taskDef: TaskDef, eventHandler: EventHandler, loggers: Seq[Logger], results: Seq[Result]): Unit
@@ -52,9 +48,15 @@ class DefaultSbtReporter extends SbtReporter {
           logLevel(level + 2, false)(_.error, throwable.getMessage, noIndicator)
           logFor(loggers)(_.trace, throwable)
 
-        case Failure(title, message) =>
+        case Failure(title, message, failure) =>
+          val stack = filteredStackTrace(failure)
+          val failureLocation =
+            stack.headOption.map { s =>
+              " (" + s.getFileName + ":" + s.getLineNumber + ")"
+            }.getOrElse("")
+
           event(Status.Failure, Duration.Zero)
-          logError(_.error, title, failureIndicator)
+          logError(_.error, title + failureLocation, failureIndicator)
           logLevel(level + 2, false)(_.error, message, noIndicator)
 
         case Pending(title, message) =>
@@ -67,6 +69,25 @@ class DefaultSbtReporter extends SbtReporter {
     report(results, 0)
     if (results.nonEmpty) logEmptyLine(loggers)
   }
+
+  private def isLittleSpecTest(className: String) =
+    className.startsWith("org.qirx.littlespec.") && className.endsWith("Spec")
+
+  private val ignoredPackages = Seq("org.qirx.littlespec.", "scala.", "java.", "sbt.")
+  private val pattern =
+    ignoredPackages
+      .mkString("^(", "|", ")[^$]*")
+      .replaceAll("\\.", "\\\\.")
+
+  private def filteredStackTrace(throwable: Throwable) =
+    throwable.getStackTrace
+      .dropWhile { s =>
+        val className = s.getClassName.split("\\$").head
+
+        val ignore = className matches pattern
+
+        !isLittleSpecTest(className) && ignore
+      }
 
   private val errorColor = "\u001b[31m"
   private val successColor = "\u001b[32m"

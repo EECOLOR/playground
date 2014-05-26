@@ -41,8 +41,10 @@ class DefaultFragment(
           else Success(title)(duration)
       }
       .recover {
-        case Fragment.ThrowableFailure(message) => Failure(title, message)
-        case t: Throwable => UnexpectedFailure(title, t)
+        case failure @ Fragment.ThrowableFailure(message) =>
+          Failure(title, message, failure)
+        case throwable: Throwable =>
+          UnexpectedFailure(title, throwable)
       }.get
   }
 
