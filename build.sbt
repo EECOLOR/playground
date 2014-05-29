@@ -4,11 +4,15 @@ organization := "org.qirx"
 
 lazy val `little-spec` = project
   .in( file("little-spec") )
+  .dependsOn(`little-spec-macros`)
 
 lazy val `little-spec-test-classes` = project
   .in( file("little-spec/testClasses") )
   .dependsOn(`little-spec`)  
 
+lazy val `little-spec-macros` = project
+  .in( file("little-spec-macros") )
+  
 // compile test classes before running test in little spec
 test in Test in `little-spec` <<= 
   (test in Test in `little-spec`).dependsOn(compile in Compile in `little-spec-test-classes`)  
