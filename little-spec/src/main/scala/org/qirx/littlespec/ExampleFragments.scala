@@ -16,7 +16,7 @@ trait ExampleFragments { self: FragmentContainer =>
     val contentAtLine = lines.drop(line - 1).mkString("\n")
     val contentAtStartPosition = contentAtLine.substring(column - 1)
 
-    getContent(contentAtStartPosition)
+    Code(getContent(contentAtStartPosition))
   }
 
   private def getContent(chars: String): String = {

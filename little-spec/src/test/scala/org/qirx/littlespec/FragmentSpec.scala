@@ -7,6 +7,7 @@ import scala.collection.mutable.ListBuffer
 
 object FragmentSpec extends Specification {
 
+
   "DefaultFragment" - {
 
     "instantiation should" - {
@@ -18,7 +19,7 @@ object FragmentSpec extends Specification {
       }
 
       "set the correct title" - {
-        val title = "title-" + Random.nextInt
+        val title = Text("title-" + Random.nextInt)
         val fragment = new DefaultFragment(title, ???, fakeOnFragmentCreated)
         fragment.title is title
       }
@@ -100,7 +101,7 @@ object FragmentSpec extends Specification {
         val eventBus = new FragmentHandler
 
         def newFragment(title: String)(code: => Fragment.Body) = {
-          val fragment = new DefaultFragment(title, code, eventBus.onFragmentCreated)
+          val fragment = new DefaultFragment(Text(title), code, eventBus.onFragmentCreated)
           eventBus.fragmentCreated(fragment)
           fragment
         }
@@ -125,14 +126,14 @@ object FragmentSpec extends Specification {
 
         val result = fragment.execute
         result is
-          CompoundResult("level 1",
+          CompoundResult(Text("level 1"),
             Seq(
-              Pending("level 2 - todo", "TODO"),
-              Pending("level 2 - pending", "pending"),
-              CompoundResult("level 2 - nested",
+              Pending(Text("level 2 - todo"), "TODO"),
+              Pending(Text("level 2 - pending"), "pending"),
+              CompoundResult(Text("level 2 - nested"),
                 Seq(
-                  Failure("level 3 - failure", "failure", failureWithMessage("failure")),
-                  Success("level 3 - success")(0.millis)
+                  Failure(Text("level 3 - failure"), "failure", failureWithMessage("failure")),
+                  Success(Text("level 3 - success"))(0.millis)
                 )
               )
             )
@@ -141,7 +142,7 @@ object FragmentSpec extends Specification {
     }
   }
 
-  val defaultTitle = "title"
+  val defaultTitle = Text("title")
 
   def newFragment(code: => Fragment.Body) =
     new DefaultFragment(defaultTitle, code, new FragmentHandler().onFragmentCreated)

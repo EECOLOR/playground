@@ -2,14 +2,26 @@ package org.qirx.littlespec
 
 import scala.concurrent.duration.FiniteDuration
 
-sealed trait Result
+sealed trait Result {
+  def title: Title
+}
 
-case class Pending(title:String, message:String) extends Result
+case class Pending(title: Title, message: String) extends Result
 
-case class Success(title:String)(val duration:FiniteDuration) extends Result
+// duration is in the second parameter list to make pattern matching easier
+case class Success(title: Title)(val duration: FiniteDuration) extends Result
 
-case class UnexpectedFailure(title:String, t:Throwable) extends Result
+case class UnexpectedFailure(title: Title, throwable: Throwable) extends Result
 
-case class Failure(title:String, message:String, f:Fragment.ThrowableFailure) extends Result
+case class Failure(title: Title, message: String, failure: Fragment.ThrowableFailure) extends Result
 
-case class CompoundResult(title:String, results:Seq[Result]) extends Result
+case class CompoundResult(title: Title, results: Seq[Result]) extends Result
+
+sealed trait Title {
+  def text: String
+}
+object Title {
+  def unapply(title:Title) = Option(title).map(_.text)
+}
+case class Text(text: String) extends Title
+case class Code(text: String) extends Title

@@ -1,8 +1,7 @@
-import org.qirx.littlespec.Assertion
 import org.qirx.littlespec.Fragment
-import org.qirx.littlespec.assertion.ThrowingAssertions
-import org.qirx.littlespec.assertion.StaticAssertions
 import org.qirx.littlespec.assertion.BasicAssertEnhancements
+import org.qirx.littlespec.assertion.StaticAssertions
+import org.qirx.littlespec.assertion.ThrowingAssertions
 
 package object testUtils extends StaticAssertions with ThrowingAssertions with BasicAssertEnhancements {
 

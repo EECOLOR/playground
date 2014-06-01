@@ -18,12 +18,15 @@ trait FragmentContainer extends ExampleFragments {
 
   private val fragmentHandler = new FragmentHandler
 
-  protected def createFragment(title: String, body: => Fragment.Body): Fragment = {
+  protected def createFragment(title: Title, body: => Fragment.Body): Fragment = {
     val fragment = new DefaultFragment(title, body, fragmentHandler.onFragmentCreated)
     if (!executeFragmentsCalled) fragments += fragment
     fragmentHandler.fragmentCreated(fragment)
     fragment
   }
+
+  protected def createFragment(title: String, body: => Fragment.Body): Fragment =
+    createFragment(Text(title), body)
 
   protected implicit class FragmentConstructor(title: String) {
 

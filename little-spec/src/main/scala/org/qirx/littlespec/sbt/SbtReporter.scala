@@ -3,11 +3,14 @@ package org.qirx.littlespec.sbt
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 
+import org.qirx.littlespec.Code
 import org.qirx.littlespec.CompoundResult
 import org.qirx.littlespec.Failure
 import org.qirx.littlespec.Pending
 import org.qirx.littlespec.Result
 import org.qirx.littlespec.Success
+import org.qirx.littlespec.Text
+import org.qirx.littlespec.Title
 import org.qirx.littlespec.UnexpectedFailure
 
 import sbt.testing.Event
@@ -33,16 +36,16 @@ class DefaultSbtReporter extends SbtReporter {
       val logError = logLevel(level, false)
 
       results.foreach {
-        case CompoundResult(title, results) =>
+        case CompoundResult(Title(title), results) =>
           val indicator = if (level == 0) noIndicator else compoundIndicator
           log(_.info, title, indicator)
           report(results, level + 1)
 
-        case s @ Success(title) =>
+        case s @ Success(Title(title)) =>
           event(Status.Success, s.duration)
           log(_.info, title, successIndicator)
 
-        case UnexpectedFailure(title, throwable) =>
+        case UnexpectedFailure(Title(title), throwable) =>
           val logExceptionLine = logLevel(level + 2, false)(_.error, _: String, noIndicator)
 
           event(Status.Error, Duration.Zero)
@@ -50,14 +53,22 @@ class DefaultSbtReporter extends SbtReporter {
           logException(throwable, logExceptionLine)
           logFor(loggers)(_.trace, throwable)
 
-        case Failure(title, message, failure) =>
+        case Failure(Text(title), message, failure) =>
           val location = getLocationOf(failure)
 
           event(Status.Failure, Duration.Zero)
           logError(_.error, title + location, failureIndicator)
           logLevel(level + 2, false)(_.error, message, noIndicator)
 
-        case Pending(title, message) =>
+        case Failure(Code(example), message, failure) =>
+          val location = getLocationOf(failure)
+
+          event(Status.Failure, Duration.Zero)
+          logError(_.error, "Example failed" + location, failureIndicator)
+          logLevel(level + 1, false)(_.error, example, noIndicator)
+          logLevel(level + 2, false)(_.error, message, noIndicator)
+
+        case Pending(Title(title), message) =>
           event(Status.Pending, Duration.Zero)
           val coloredMessage = warningColor + message + resetColor
           log(_.warn, title + " - " + coloredMessage, pendingIndicator)

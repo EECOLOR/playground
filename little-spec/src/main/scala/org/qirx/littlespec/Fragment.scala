@@ -25,7 +25,7 @@ object Fragment {
 }
 
 class DefaultFragment(
-  val title: String,
+  val title: Title,
   code: => Fragment.Body,
   onSubFragmentCreated: (Fragment => Unit) => FragmentHandler.CancelSubscription) extends Fragment {
 

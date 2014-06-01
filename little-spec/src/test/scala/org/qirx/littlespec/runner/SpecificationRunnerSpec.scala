@@ -8,6 +8,7 @@ import org.qirx.littlespec.Fragment
 import org.qirx.littlespec.Success
 import org.qirx.littlespec.Result
 import org.qirx.littlespec.CompoundResult
+import org.qirx.littlespec.Text
 
 object SpecificationRunnerSpec extends Specification {
 
@@ -27,7 +28,7 @@ object SpecificationRunnerSpec extends Specification {
         }
       )
 
-      results is Seq(Success("example")(0.millis))
+      results is Seq(Success(Text("example"))(0.millis))
     }
 
     "correctly execute nested examples" - {
@@ -39,7 +40,7 @@ object SpecificationRunnerSpec extends Specification {
         }
       )
 
-      results is Seq(CompoundResult("examples", Seq(Success("example")(0.millis))))
+      results is Seq(CompoundResult(Text("examples"), Seq(Success(Text("example"))(0.millis))))
     }
   }
 }

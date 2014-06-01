@@ -3,6 +3,7 @@ package org.qirx.littlespec.sbt
 
 import scala.concurrent.duration.DurationInt
 
+import org.qirx.littlespec.Code
 import org.qirx.littlespec.CompoundResult
 import org.qirx.littlespec.Failure
 import org.qirx.littlespec.Fragment
@@ -10,6 +11,7 @@ import org.qirx.littlespec.Pending
 import org.qirx.littlespec.Result
 import org.qirx.littlespec.Specification
 import org.qirx.littlespec.Success
+import org.qirx.littlespec.Text
 import org.qirx.littlespec.UnexpectedFailure
 
 import sbt.testing.EventHandler
@@ -74,7 +76,7 @@ class SbtReporterSpec extends Specification {
           new StackTraceElement("org_qirx_littlespec.Class", "abc", "TestClass", 333)
         ))
 
-        val (_, logs) = report(Failure("test", "message", throwable))
+        val (_, logs) = report(Failure(Text("test"), "message", throwable))
 
         logs is Seq(
           errorLog(s"$failureIndicator test (TestClass:333)"),
@@ -87,7 +89,7 @@ class SbtReporterSpec extends Specification {
         val stackTrace = unexpectedFailure.getStackTrace.take(2).map { s =>
           "SbtReporterSpec.scala:" + s.getLineNumber + " (org.qirx.littlespec.sbt.SbtReporterSpec)"
         }
-        val (events, logs) = report(UnexpectedFailure("test", unexpectedFailure))
+        val (events, logs) = report(UnexpectedFailure(Text("test"), unexpectedFailure))
 
         events is Seq(Event(Status.Error))
 
@@ -116,7 +118,7 @@ class SbtReporterSpec extends Specification {
           littlespec, sbt, java, scala
         ))
 
-        val (events, logs) = report(UnexpectedFailure("test", unexpectedFailure))
+        val (events, logs) = report(UnexpectedFailure(Text("test"), unexpectedFailure))
 
         logs is Seq(
           errorLog(s"$failureIndicator test"),
@@ -129,15 +131,15 @@ class SbtReporterSpec extends Specification {
       }
 
       "unexpected failure with cause" - {
-        def line(s:StackTraceElement) =
-        "SbtReporterSpec.scala:" + s.getLineNumber + " (org.qirx.littlespec.sbt.SbtReporterSpec)"
+        def line(s: StackTraceElement) =
+          "SbtReporterSpec.scala:" + s.getLineNumber + " (org.qirx.littlespec.sbt.SbtReporterSpec)"
 
         val unexpectedCause = new Exception("cause")
         val stackTrace2 = unexpectedCause.getStackTrace.take(2).map(line)
         val unexpectedFailure = new Exception("failure", unexpectedCause)
         val stackTrace1 = unexpectedFailure.getStackTrace.take(2).map(line)
 
-        val (events, logs) = report(UnexpectedFailure("test", unexpectedFailure))
+        val (events, logs) = report(UnexpectedFailure(Text("test"), unexpectedFailure))
 
         logs is Seq(
           errorLog(s"$failureIndicator test"),
@@ -154,7 +156,7 @@ class SbtReporterSpec extends Specification {
       }
 
       "pending" - {
-        val (events, logs) = report(Pending("test", "message"))
+        val (events, logs) = report(Pending(Text("test"), "message"))
 
         events is Seq(Event(Status.Pending))
 
@@ -166,7 +168,7 @@ class SbtReporterSpec extends Specification {
       }
 
       "nested" - {
-        val (events, logs) = report(CompoundResult("test", Seq.empty))
+        val (events, logs) = report(CompoundResult(Text("test"), Seq.empty))
 
         events is Seq.empty
 
@@ -176,7 +178,7 @@ class SbtReporterSpec extends Specification {
       }
 
       "nested with indentation" - {
-        val (_, logs) = report(CompoundResult("outer", Seq(successResult("inner"))))
+        val (_, logs) = report(CompoundResult(Text("outer"), Seq(successResult("inner"))))
 
         logs is Seq(
           infoLog(s" outer"),
@@ -186,8 +188,8 @@ class SbtReporterSpec extends Specification {
 
       "nested with extra nesting" - {
         val (_, logs) = report(
-          CompoundResult("outer", Seq(
-            CompoundResult("inner", Seq(
+          CompoundResult(Text("outer"), Seq(
+            CompoundResult(Text("inner"), Seq(
               successResult("inner"),
               failureResult("inner"))))))
 
@@ -201,12 +203,27 @@ class SbtReporterSpec extends Specification {
       }
 
       "multiline correctly for different systems" - {
-        val (_, logs) = report(CompoundResult("outer",
+        val (_, logs) = report(CompoundResult(Text("outer"),
           Seq(successResult("inner1\ninner2\r\ninner3\rinner4"))))
 
         logs is Seq(
           infoLog(s" outer"),
           infoLog(s"   $successIndicator inner1\n     inner2\n     inner3\n     inner4"),
+          emptyLine)
+      }
+
+      "example failure" - {
+        val example = Code(
+          """|val `1` = 1
+             |val `2` = 2
+             |`1` is `2`""".stripMargin)
+
+        val (_, logs) = report(Failure(example, "message", throwableFailure))
+
+        logs is Seq(
+          errorLog(s"$failureIndicator Example failed ($fileName:$lineNumber)"),
+          errorLog(s"  ${ example.text.replaceAll("\n", "\n  ")}"),
+          errorLog(s"    message"),
           emptyLine)
       }
     }
@@ -231,8 +248,8 @@ class SbtReporterSpec extends Specification {
   val successIndicator = successColor + "+" + resetColor
   val failureIndicator = errorColor + "X" + resetColor
 
-  def successResult(message: String) = Success(message)(1.second)
-  def failureResult(message: String) = Failure(message, "message", throwableFailure)
+  def successResult(message: String) = Success(Text(message))(1.second)
+  def failureResult(message: String) = Failure(Text(message), "message", throwableFailure)
 
   val throwableFailure = new Fragment.ThrowableFailure("failure")
   val (fileName, lineNumber) = {

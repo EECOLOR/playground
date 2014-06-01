@@ -4,6 +4,8 @@ object FragmentContainerSpec extends Specification {
 
   "FragmentContainer should" - {
 
+    def todoResult(title: String) = Pending(Text(title), "TODO")
+
     "provide a way to create a fragment" - {
       val c = new FragmentContainer {
         createFragment("test", {})
@@ -23,8 +25,10 @@ object FragmentContainerSpec extends Specification {
 
     "provide a way to use code as an example" - {
 
+      def todoResult(text: String) = Pending(Code(text), "TODO")
+
       def result(message: String) =
-        CompoundResult("test", Seq(todoResult(message)))
+        CompoundResult(Text("test"), Seq(todoResult(message)))
 
       "empty" - {
         val c = new FragmentContainer {
@@ -152,14 +156,12 @@ object FragmentContainerSpec extends Specification {
           }
 
         container.executeFragments() is
-          Seq(CompoundResult("test1", Seq(todoResult("test2"), todoResult("test3"))))
+          Seq(CompoundResult(Text("test1"), Seq(todoResult("test2"), todoResult("test3"))))
 
         // and being able to repeat it
         container.executeFragments() is
-          Seq(CompoundResult("test1", Seq(todoResult("test2"), todoResult("test3"))))
+          Seq(CompoundResult(Text("test1"), Seq(todoResult("test2"), todoResult("test3"))))
       }
     }
   }
-
-  def todoResult(name: String) = Pending(name, "TODO")
 }
