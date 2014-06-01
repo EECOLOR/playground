@@ -2,7 +2,7 @@ package org.qirx.littlespec
 
 import scala.collection.mutable.ListBuffer
 
-trait FragmentContainer extends ExampleFragments {
+trait FragmentContainer {
 
   private val fragments = ListBuffer.empty[Fragment]
   private var results: Seq[Result] = Seq.empty
