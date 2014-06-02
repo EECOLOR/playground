@@ -1,6 +1,6 @@
 package org.qirx.littlespec.assertion
 
-import org.qirx.littlespec.Fragment
+import org.qirx.littlespec.fragments.Fragment
 
 trait StaticAssertions {
   def success = Fragment.Body.Success

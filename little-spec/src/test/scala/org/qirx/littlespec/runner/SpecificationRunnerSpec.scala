@@ -4,11 +4,11 @@ package org.qirx.littlespec.runner
 import org.qirx.littlespec.Specification
 import scala.concurrent.duration._
 import scala.collection.mutable
-import org.qirx.littlespec.Fragment
-import org.qirx.littlespec.Success
-import org.qirx.littlespec.Result
-import org.qirx.littlespec.CompoundResult
-import org.qirx.littlespec.Text
+import org.qirx.littlespec.fragments.Fragment
+import org.qirx.littlespec.fragments.Success
+import org.qirx.littlespec.fragments.Result
+import org.qirx.littlespec.fragments.CompoundResult
+import org.qirx.littlespec.fragments.Text
 
 object SpecificationRunnerSpec extends Specification {
 
@@ -28,7 +28,9 @@ object SpecificationRunnerSpec extends Specification {
         }
       )
 
-      results is Seq(Success(Text("example"))(0.millis))
+      results isLike {
+        case Seq(Success(Text("example"))) => success
+      }
     }
 
     "correctly execute nested examples" - {
@@ -40,7 +42,10 @@ object SpecificationRunnerSpec extends Specification {
         }
       )
 
-      results is Seq(CompoundResult(Text("examples"), Seq(Success(Text("example"))(0.millis))))
+      results isLike {
+        case Seq(CompoundResult(Text("examples"),
+          Seq(Success(Text("example"))))) => success
+      }
     }
   }
 }

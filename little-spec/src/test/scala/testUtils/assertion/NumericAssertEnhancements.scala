@@ -1,6 +1,6 @@
-package org.qirx.littlespec.assertion
+package testUtils.assertion
 
-import org.qirx.littlespec.Fragment
+import org.qirx.littlespec.assertion.StaticAssertions
 
 trait NumericAssertEnhancements { self: StaticAssertions =>
 

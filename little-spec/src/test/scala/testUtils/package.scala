@@ -1,9 +1,13 @@
-import org.qirx.littlespec.Fragment
+import org.qirx.littlespec.fragments.Fragment
 import org.qirx.littlespec.assertion.BasicAssertEnhancements
 import org.qirx.littlespec.assertion.StaticAssertions
 import org.qirx.littlespec.assertion.ThrowingAssertions
 
-package object testUtils extends StaticAssertions with ThrowingAssertions with BasicAssertEnhancements {
+package object testUtils {
+
+  protected val assertUtils = new StaticAssertions with ThrowingAssertions with BasicAssertEnhancements
+
+  import assertUtils._
 
   val beAFailure = throwA[Fragment.Failure]
   def beAFailureWithMessage(message: String) =
@@ -12,4 +16,5 @@ package object testUtils extends StaticAssertions with ThrowingAssertions with B
   implicit class FailWith(t: => Fragment.Body) {
     def failsWith(message: String) = t must beAFailureWithMessage(message)
   }
+
 }

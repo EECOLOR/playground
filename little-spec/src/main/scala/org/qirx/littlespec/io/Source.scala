@@ -3,7 +3,7 @@ package org.qirx.littlespec.io
 import scala.annotation.tailrec
 import scala.io.{Source => ScalaSource}
 import org.qirx.littlespec.macros.Location
-import org.qirx.littlespec.Code
+import org.qirx.littlespec.fragments.Code
 
 object Source {
   def codeAtLocation(location: Location) = {

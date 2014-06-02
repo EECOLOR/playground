@@ -1,8 +1,7 @@
 package org.qirx.littlespec.assertion
 
 import scala.reflect.ClassTag
-import org.qirx.littlespec.Assertion
-import org.qirx.littlespec.Fragment
+import org.qirx.littlespec.fragments.Fragment
 
 trait ThrowingAssertions { self: StaticAssertions with BasicAssertEnhancements =>
 

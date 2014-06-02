@@ -1,9 +1,9 @@
-package org.qirx.littlespec.sbt
+package testUtils
 
 import sbt.testing.{ TaskDef => SbtTaskDef }
-import sbt.testing.Fingerprint
 import sbt.testing.SubclassFingerprint
 import sbt.testing.TestSelector
+import sbt.testing.{TaskDef => SbtTaskDef}
 
 object TaskDefFactory {
 

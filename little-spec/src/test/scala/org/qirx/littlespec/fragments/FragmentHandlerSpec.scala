@@ -1,5 +1,6 @@
-// format: +preserveDanglingCloseParenthesis
-package org.qirx.littlespec
+package org.qirx.littlespec.fragments
+
+import org.qirx.littlespec.Specification
 
 object FragmentHandlerSpec extends Specification {
 
@@ -27,20 +28,20 @@ object FragmentHandlerSpec extends Specification {
       eventBus.onFragmentCreated(f => event2 = Some(f))
       eventBus.fragmentCreated(testFragment)
 
-      (event1 )is Some(testFragment)
-      (event2 )is Some(testFragment)
+      (event1) is Some(testFragment)
+      (event2) is Some(testFragment)
     }
 
     "hand out a method to cancel the subscription" - {
 
-        var event: Option[Fragment] = None
+      var event: Option[Fragment] = None
 
-        val eventBus = newFragmentHandler
-        val cancelSubscription = eventBus.onFragmentCreated(e => event = Some(e))
-        cancelSubscription()
-        eventBus.fragmentCreated(testFragment)
+      val eventBus = newFragmentHandler
+      val cancelSubscription = eventBus.onFragmentCreated(e => event = Some(e))
+      cancelSubscription()
+      eventBus.fragmentCreated(testFragment)
 
-        (event )is None
+      (event) is None
     }
   }
 }

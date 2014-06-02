@@ -1,4 +1,4 @@
-package org.qirx.littlespec
+package org.qirx.littlespec.fragments
 
 import scala.collection.mutable.ListBuffer
 

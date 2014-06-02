@@ -1,9 +1,8 @@
-package org.qirx.littlespec.assertion
+package testUtils.assertion
 
 import org.qirx.littlespec.Specification
-import testUtils.beAFailure
 
-object CollectionAssertionsSpec extends Specification {
+object CollectionAssertionsSpec extends Specification with CollectionAssertions {
 
   "CollectionAssertions should" - {
 

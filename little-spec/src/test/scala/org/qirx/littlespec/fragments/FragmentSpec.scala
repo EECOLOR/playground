@@ -1,11 +1,12 @@
 // format: +preserveDanglingCloseParenthesis
-package org.qirx.littlespec
+package org.qirx.littlespec.fragments
 
 import scala.concurrent.duration._
 import scala.util.Random
-import scala.collection.mutable.ListBuffer
+import testUtils.assertion.NumericAssertEnhancements
+import org.qirx.littlespec.Specification
 
-object FragmentSpec extends Specification {
+object FragmentSpec extends Specification with NumericAssertEnhancements {
 
 
   "DefaultFragment" - {
@@ -25,28 +26,6 @@ object FragmentSpec extends Specification {
       }
     }
 
-    "fragment body should" - {
-
-      "have a todo constructor that returns a fragment body" -
-        isBody(Fragment.Body.Todo)
-
-      "have a success constructor that returns a fragment body" -
-        isBody(Fragment.Body.Success)
-
-      "have a pending constructor that returns a fragment body" -
-        isBody(Fragment.Body.Pending(""))
-
-      "have an implicit conversion for unit" - {
-        val unit = ()
-        isBody(unit)
-      }
-
-      "have an implicit conversion for fragment" - {
-        val fragment = newFragment()
-        isBody(fragment)
-      }
-    }
-
     "execution should" - {
 
       "return pending todo for unit" - {
@@ -54,17 +33,17 @@ object FragmentSpec extends Specification {
       }
 
       "return pending todo for todo" - {
-        val result = execute(Fragment.Body.Todo)
+        val result = execute(todo)
         result is Pending(defaultTitle, "TODO")
       }
 
       "return pending for pending" - {
-        val result = execute(Fragment.Body.Pending("message"))
+        val result = execute(pending("message"))
         result is Pending(defaultTitle, "message")
       }
 
       "return success for success" - {
-        val result = execute(Fragment.Body.Success)
+        val result = execute(success)
         result isLike {
           case Success(title) => title is defaultTitle
         }
@@ -77,10 +56,10 @@ object FragmentSpec extends Specification {
       }
 
       "measure duration" - {
-        val result1 = execute(Fragment.Body.Success)
+        val result1 = execute(success)
         val result2 = execute {
           Thread.sleep(101)
-          Fragment.Body.Success
+          success
         }
 
         result1 isLike {
@@ -93,7 +72,7 @@ object FragmentSpec extends Specification {
 
       "capture failures" - {
         val message = "custom failure"
-        val result = execute(failWithMessage(message))
+        val result = execute(failure(message))
         result is Failure(defaultTitle, message, failureWithMessage(message))
       }
 
@@ -112,14 +91,14 @@ object FragmentSpec extends Specification {
               //todo
             }
             newFragment("level 2 - pending") {
-              Fragment.Body.Pending("pending")
+              pending("pending")
             }
             newFragment("level 2 - nested") {
               newFragment("level 3 - failure") {
-                failWithMessage("failure")
+                failure("failure")
               }
               newFragment("level 3 - success") {
-                Fragment.Body.Success
+                success
               }
             }
           }
@@ -144,19 +123,14 @@ object FragmentSpec extends Specification {
 
   val defaultTitle = Text("title")
 
-  def newFragment(code: => Fragment.Body) =
+  def newFragment(code: => FragmentBody) =
     new DefaultFragment(defaultTitle, code, new FragmentHandler().onFragmentCreated)
 
-  def isBody(body: Fragment.Body) = success
-
-  def execute(code: => Fragment.Body) =
+  def execute(code: => FragmentBody) =
     newFragment(code).execute
 
   def failureWithMessage(message:String) =
     Fragment.Failure(message)
-
-  def failWithMessage(message: String) =
-    throw failureWithMessage(message)
 
   implicit def numeric[T <: Duration]: Numeric[T] =
     new Numeric[T] {

@@ -1,6 +1,4 @@
-package org.qirx.littlespec
-
-import scala.collection.mutable.ListBuffer
+package org.qirx.littlespec.fragments
 import scala.collection.mutable.HashSet
 
 class FragmentHandler {

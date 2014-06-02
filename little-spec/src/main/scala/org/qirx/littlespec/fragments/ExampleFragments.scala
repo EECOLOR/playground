@@ -1,4 +1,4 @@
-package org.qirx.littlespec
+package org.qirx.littlespec.fragments
 
 import org.qirx.littlespec.macros.Location
 import org.qirx.littlespec.io.Source

@@ -1,9 +1,9 @@
-// format: +preserveDanglingCloseParenthesis
 package org.qirx.littlespec.sbt
 
 import org.qirx.littlespec.Specification
+import testUtils.assertion.CollectionAssertions
 
-object FrameworkSpec extends Specification {
+object FrameworkSpec extends Specification with CollectionAssertions {
 
   val framework = new Framework
 
@@ -16,38 +16,35 @@ object FrameworkSpec extends Specification {
       framework.name is "Little Spec"
     }
 
-    {
+    "must have org.qirx.littlespec.Specification as a fingerprints" - {
+      val fingerprints = framework.fingerprints
 
-      "must have org.qirx.littlespec.Specification as a fingerprints" - {
-    	  val fingerprints = framework.fingerprints
+      "two fingerprints" - {
+        fingerprints.size is 2
+      }
 
-        "two fingerprints" - {
-          fingerprints.size is 2
+      "correct type of fingerprints" - {
+        fingerprints.foreach {
+          case fingerprint: sbt.testing.SubclassFingerprint =>
+            fingerprint.requireNoArgConstructor is true
+            fingerprint.superclassName is "org.qirx.littlespec.Specification"
+          case fingerprint =>
+            failure(fingerprint + "is not an instance of SubclassFingerprint")
         }
+        success
+      }
 
-        "correct type of fingerprints" - {
-          fingerprints.foreach {
-            case fingerprint: sbt.testing.SubclassFingerprint =>
-              fingerprint.requireNoArgConstructor is true
-              fingerprint.superclassName is "org.qirx.littlespec.Specification"
-            case fingerprint =>
-              failure(fingerprint + "is not an instance of SubclassFingerprint")
-          }
-          success
+      "fingerprint for object" - {
+        fingerprints must contain {
+          case fingerprint: sbt.testing.SubclassFingerprint =>
+            fingerprint.isModule is true
         }
+      }
 
-        "fingerprint for object" - {
-          fingerprints must contain {
-            case fingerprint: sbt.testing.SubclassFingerprint =>
-              fingerprint.isModule is true
-          }
-        }
-
-        "fingerprint for class" - {
-          fingerprints must contain {
-            case fingerprint: sbt.testing.SubclassFingerprint =>
-              fingerprint.isModule is false
-          }
+      "fingerprint for class" - {
+        fingerprints must contain {
+          case fingerprint: sbt.testing.SubclassFingerprint =>
+            fingerprint.isModule is false
         }
       }
     }

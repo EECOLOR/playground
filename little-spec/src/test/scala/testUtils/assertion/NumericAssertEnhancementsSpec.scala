@@ -1,9 +1,9 @@
-package org.qirx.littlespec.assertion
+package testUtils.assertion
 
 import org.qirx.littlespec.Specification
 import testUtils.beAFailure
 
-object NumericAssertEnhancementsSpec extends Specification {
+object NumericAssertEnhancementsSpec extends Specification with NumericAssertEnhancements {
 
   "NumericAssertEnhancements should" - {
 

@@ -1,11 +1,8 @@
-package org.qirx.littlespec.assertion
+package testUtils.assertion
 
 import scala.collection.Iterable
-import org.qirx.littlespec.Assertion
-import scala.reflect.ClassTag
-import org.qirx.littlespec.Fragment
-import scala.collection.mutable.WrappedArray
-import scala.collection.mutable.ArrayOps
+import org.qirx.littlespec.assertion.Assertion
+import org.qirx.littlespec.fragments.Fragment
 import scala.util.Try
 
 trait CollectionAssertions {

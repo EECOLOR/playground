@@ -2,24 +2,23 @@
 package org.qirx.littlespec.sbt
 
 import scala.concurrent.duration.DurationInt
-
-import org.qirx.littlespec.Code
-import org.qirx.littlespec.CompoundResult
-import org.qirx.littlespec.Failure
-import org.qirx.littlespec.Fragment
-import org.qirx.littlespec.Pending
-import org.qirx.littlespec.Result
+import org.qirx.littlespec.fragments.Code
+import org.qirx.littlespec.fragments.CompoundResult
+import org.qirx.littlespec.fragments.Failure
+import org.qirx.littlespec.fragments.Fragment
+import org.qirx.littlespec.fragments.Pending
+import org.qirx.littlespec.fragments.Result
 import org.qirx.littlespec.Specification
-import org.qirx.littlespec.Success
-import org.qirx.littlespec.Text
-import org.qirx.littlespec.UnexpectedFailure
-
+import org.qirx.littlespec.fragments.Success
+import org.qirx.littlespec.fragments.Text
+import org.qirx.littlespec.fragments.UnexpectedFailure
 import sbt.testing.EventHandler
 import sbt.testing.Fingerprint
 import sbt.testing.Logger
 import sbt.testing.OptionalThrowable
 import sbt.testing.Selector
 import sbt.testing.Status
+import testUtils.TaskDefFactory
 
 class SbtReporterSpec extends Specification {
 

@@ -8,11 +8,12 @@ import sbt.testing.Event
 import sbt.testing.EventHandler
 import sbt.testing.Logger
 import sbt.testing.TaskDef
-import org.qirx.littlespec.Success
-import org.qirx.littlespec.Result
+import org.qirx.littlespec.fragments.Success
+import org.qirx.littlespec.fragments.Result
 import scala.concurrent.duration._
-import org.qirx.littlespec.Result
-import org.qirx.littlespec.Text
+import org.qirx.littlespec.fragments.Result
+import org.qirx.littlespec.fragments.Text
+import testUtils.TaskDefFactory
 
 object TaskSpec extends Specification {
 

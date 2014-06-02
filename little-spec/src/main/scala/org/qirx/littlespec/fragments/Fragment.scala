@@ -1,8 +1,9 @@
-package org.qirx.littlespec
+package org.qirx.littlespec.fragments
 
 import scala.concurrent.duration._
 import scala.util.Try
 import scala.collection.mutable.ListBuffer
+import scala.language.implicitConversions
 
 trait Fragment {
   def execute(): Result

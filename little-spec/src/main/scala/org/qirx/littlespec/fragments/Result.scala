@@ -1,4 +1,4 @@
-package org.qirx.littlespec
+package org.qirx.littlespec.fragments
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -16,12 +16,3 @@ case class UnexpectedFailure(title: Title, throwable: Throwable) extends Result
 case class Failure(title: Title, message: String, failure: Fragment.Failure) extends Result
 
 case class CompoundResult(title: Title, results: Seq[Result]) extends Result
-
-sealed trait Title {
-  def text: String
-}
-object Title {
-  def unapply(title:Title) = Option(title).map(_.text)
-}
-case class Text(text: String) extends Title
-case class Code(text: String) extends Title

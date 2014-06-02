@@ -1,10 +1,10 @@
-// format: +preserveDanglingCloseParenthesis
 package org.qirx.littlespec.sbt
 
 import sbt.testing.Fingerprint
 import java.net.URLClassLoader
 import java.io.File
 import org.qirx.littlespec.Specification
+import testUtils.TaskDefFactory
 
 class RunnerSpec extends Specification {
 
