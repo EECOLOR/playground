@@ -13,7 +13,7 @@ trait BasicAssertEnhancements { self: StaticAssertions =>
   }
 
   implicit class MustEnhancement[A](result: => A) {
-    def must[B](assertion: => Assertion[B])(implicit ev:A => B): Fragment.Body =
+    def must[B](assertion: => Assertion[B])(implicit ev: A => B): Fragment.Body =
       assertion.assert(result) match {
         case Right(body) => body
         case Left(message) => failure(message)
@@ -24,17 +24,5 @@ trait BasicAssertEnhancements { self: StaticAssertions =>
     def isLike(matcher: PartialFunction[A, Fragment.Body]): Fragment.Body =
       if (matcher.isDefinedAt(result)) matcher(result)
       else failure(result + " does not match pattern")
-  }
-
-  implicit class FragmentBodyEnhancement(body: => Fragment.Body) {
-    def withMessage(changeMessage:String => String):Fragment.Body =
-      try body
-      catch {
-        case Fragment.ThrowableFailure(message) =>
-          failure(changeMessage(message))
-      }
-
-    def withMessage(message:String):Fragment.Body =
-      withMessage(_ => message)
   }
 }
