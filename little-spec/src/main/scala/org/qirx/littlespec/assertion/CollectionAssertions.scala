@@ -44,7 +44,7 @@ trait CollectionAssertions {
             Try(method(elem))
               .map(result => None -> Some(result))
               .recover {
-                case Fragment.ThrowableFailure(message) =>
+                case Fragment.Failure(message) =>
                   Some(message) -> None
               }.get
           else None -> None

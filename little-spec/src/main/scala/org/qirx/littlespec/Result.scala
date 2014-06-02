@@ -13,7 +13,7 @@ case class Success(title: Title)(val duration: FiniteDuration) extends Result
 
 case class UnexpectedFailure(title: Title, throwable: Throwable) extends Result
 
-case class Failure(title: Title, message: String, failure: Fragment.ThrowableFailure) extends Result
+case class Failure(title: Title, message: String, failure: Fragment.Failure) extends Result
 
 case class CompoundResult(title: Title, results: Seq[Result]) extends Result
 

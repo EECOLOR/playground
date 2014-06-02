@@ -153,7 +153,7 @@ object FragmentSpec extends Specification {
     newFragment(code).execute
 
   def failureWithMessage(message:String) =
-    Fragment.ThrowableFailure(message)
+    Fragment.Failure(message)
 
   def failWithMessage(message: String) =
     throw failureWithMessage(message)

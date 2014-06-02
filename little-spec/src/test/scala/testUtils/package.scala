@@ -5,10 +5,11 @@ import org.qirx.littlespec.assertion.ThrowingAssertions
 
 package object testUtils extends StaticAssertions with ThrowingAssertions with BasicAssertEnhancements {
 
-  val beAFailure = throwA[Fragment.ThrowableFailure]
-  def beAFailureWithMessage(expected: String) =
-    beAFailure.like {
-      case Fragment.ThrowableFailure(message) => message is expected
-      case _ => failure("no exception was thrown")
-    }
+  val beAFailure = throwA[Fragment.Failure]
+  def beAFailureWithMessage(message: String) =
+    beAFailure withMessage message
+
+  implicit class FailWith(t: => Fragment.Body) {
+    def failsWith(message: String) = t must beAFailureWithMessage(message)
+  }
 }

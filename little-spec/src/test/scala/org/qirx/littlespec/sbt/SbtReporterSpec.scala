@@ -67,7 +67,7 @@ class SbtReporterSpec extends Specification {
 
       "failure with correct location" - {
 
-        val throwable = new Fragment.ThrowableFailure("failure")
+        val throwable = new Fragment.Failure("failure")
         throwable.setStackTrace(Array(
           new StackTraceElement("org.qirx.littlespec.Class", "abc", "LittleSpecClass", 666),
           new StackTraceElement("scala.Class", "abc", "ScalaClass", 666),
@@ -251,7 +251,7 @@ class SbtReporterSpec extends Specification {
   def successResult(message: String) = Success(Text(message))(1.second)
   def failureResult(message: String) = Failure(Text(message), "message", throwableFailure)
 
-  val throwableFailure = new Fragment.ThrowableFailure("failure")
+  val throwableFailure = new Fragment.Failure("failure")
   val (fileName, lineNumber) = {
     val s = throwableFailure.getStackTrace.head
     (s.getFileName, s.getLineNumber)

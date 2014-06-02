@@ -11,7 +11,7 @@ trait Fragment {
 object Fragment {
   sealed trait Body
 
-  case class ThrowableFailure(message: String) extends Throwable
+  case class Failure(message: String) extends Throwable(message)
 
   object Body {
     val Todo = Pending("TODO")
@@ -41,7 +41,7 @@ class DefaultFragment(
           else Success(title)(duration)
       }
       .recover {
-        case failure @ Fragment.ThrowableFailure(message) =>
+        case failure @ Fragment.Failure(message) =>
           Failure(title, message, failure)
         case throwable: Throwable =>
           UnexpectedFailure(title, throwable)
