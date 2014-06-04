@@ -1,6 +1,8 @@
-Getting started
-To create a specification, extend an object or class with Specification
-and create a fragment. An empty fragment results in a TODO.
+**This documentation is generated from `documentation.GettingStarted`**
+
+---
+To create a specification, extend an object or class with `Specification`
+and create a fragment. An empty fragment results in a `TODO`.
 ```scala
 import org.qirx.littlespec.Specification
 

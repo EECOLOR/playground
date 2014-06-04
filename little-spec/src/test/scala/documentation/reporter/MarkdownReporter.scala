@@ -1,4 +1,4 @@
-package documentation
+package documentation.reporter
 
 import java.io.File
 
@@ -18,35 +18,39 @@ import sbt.testing.EventHandler
 import sbt.testing.Logger
 import sbt.testing.TaskDef
 
-class DocumentationReporter extends SbtReporter {
+class MarkdownReporter extends SbtReporter {
 
   val defaultReporter = new DefaultSbtReporter
 
-  lazy val targetDirectory = {
-    val directory = new File("./little-spec/documentation")
-    if (!directory.exists) directory.mkdir
-    directory
+  lazy val targetDirectory = {{
+      val directory = new File("./little-spec/documentation")
+      if (!directory.exists) directory.mkdir
+      directory
+    }
   }
 
   def report(taskDef: TaskDef, eventHandler: EventHandler, loggers: Seq[Logger], results: Seq[Result]): Unit = {
 
     val fullyQualifiedName = taskDef.fullyQualifiedName
-    val sbtLoggers =
-      if (fullyQualifiedName startsWith "documentation.") {
+    if (fullyQualifiedName startsWith "documentation.") {
 
-        println("TODO - get the target location from sbt using sbt build info")
+      println("TODO - get the target location from sbt using sbt build info")
 
-        val name = fullyQualifiedName.replaceAll("documentation\\.", "")
-        val file = new File(targetDirectory, name + ".md")
+      val name = fullyQualifiedName.replaceAll("documentation\\.", "")
+      val file = new File(targetDirectory, name + ".md")
 
-        println(s"Reporting $fullyQualifiedName in ${file.getAbsolutePath}")
+      println(s"Reporting $fullyQualifiedName in ${file.getAbsolutePath}")
 
-        val text = toMarkdown(results)
-        printToFile(file, _ println text)
-        Seq.empty
-      } else loggers
+      val text =
+        s"""|**This documentation is generated from `$fullyQualifiedName`**
+            |
+            |---
+            |${toMarkdown(results)}""".stripMargin
 
-    defaultReporter.report(taskDef, eventHandler, sbtLoggers, results)
+      printToFile(file, _ println text)
+    }
+
+    defaultReporter.report(taskDef, eventHandler, loggers, results)
   }
 
   def toMarkdown(results: Seq[Result]): String =

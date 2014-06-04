@@ -1,3 +1,6 @@
+**This documentation is generated from `documentation.Customization`**
+
+---
 There are a lot of ways in which you can make things more readable and usable
 The easiest form of customization is the use of `Assertion` classes
 that work with the `must` enhancement.

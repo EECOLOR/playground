@@ -1,6 +1,9 @@
+**This documentation is generated from `documentation.AssertEnhancements`**
+
+---
 A few enhancements are added for every type, meaning that calling the
 appropriate method results in an implicit resolution of that method
-The `is` enhancement performs a simple == comparison
+The `is` enhancement performs a simple `==` comparison
 it results in a failure when the values are not equal
 ```scala
 1 is 1

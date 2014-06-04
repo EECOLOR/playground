@@ -1,3 +1,6 @@
+**This documentation is generated from `documentation.Assertions`**
+
+---
 The simplest form of assertions are the static assertions
 ```scala
 "todo" - {

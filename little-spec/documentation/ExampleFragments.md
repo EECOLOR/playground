@@ -1,3 +1,6 @@
+**This documentation is generated from `documentation.ExampleFragments`**
+
+---
 Sometimes you want to show how your library is used, the problem with
 documenting code examples is that they 'rot'. In case you change your
 library you will not be notified of any compile errors in your

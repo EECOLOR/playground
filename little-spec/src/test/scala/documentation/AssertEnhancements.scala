@@ -13,7 +13,7 @@ object AssertEnhancements extends Specification {
   """|A few enhancements are added for every type, meaning that calling the
      |appropriate method results in an implicit resolution of that method""".stripMargin - {
 
-    "The `is` enhancement performs a simple == comparison" - {
+    "The `is` enhancement performs a simple `==` comparison" - {
 
       "it results in a failure when the values are not equal" - {
         (1 is 2) must beAFailure
