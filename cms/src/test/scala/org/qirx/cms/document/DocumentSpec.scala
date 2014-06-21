@@ -130,19 +130,12 @@ object DocumentSpec extends Specification {
   class EnumerationTree(id: String, values: Tree[Properties => JsValue]) {
     idLowerCase("tree enumeration", id)
   }
-  object EnumerationTree {
-    def mapNodes[T](nodes: Seq[(String, Node[T])])(
-      implicit toGetValue: T => Properties => JsValue): Seq[(String, Node[Properties => JsValue])] = {
-      nodes.map {
-        case (key, Leaf(value)) => key -> Leaf(toGetValue(value))
-        case (key, branch: Tree[T]) => key -> Tree(mapNodes(branch.nodes))
-      }
-    }
 
-    def apply[T](id: String)(values: Tree[T])(implicit toGetValue: T => Properties => JsValue) = {
-      val elementTree = Tree(mapNodes(values.nodes))
-      new EnumerationTree(id, elementTree)
-    }
+  "ids should only contain letters and underscores" - {}
+
+  object EnumerationTree {
+    def apply[T](id: String)(values: Node[T]*)(implicit toGetValue: T => Properties => JsValue) =
+      new EnumerationTree(id, Tree(values) map toGetValue)
   }
 
   case class Element(id: String, value: Option[Properties => JsValue]) {
@@ -172,21 +165,35 @@ object DocumentSpec extends Specification {
   class Image(id: String) extends Property(id) with Identifyable
   object Image extends Image("image")
 
-  sealed trait Node[A]
-  object Node {
-    implicit def toNode[A](a:A):Node[A] = Leaf(a)
-  }
-  case class Leaf[A](value: A) extends Node[A]
-  case class Tree[A](nodes: Seq[(String, Node[A])]) extends Node[A]
+  trait LL {
+    implicit def toLeaf[A](a: A): Node[A] = Leaf(a)
+    implicit def toBranch[A](pair: (String, A))(implicit toNode: A => Node[A]) = {
+      val (name, node) = pair
+      Branch(name, node)
+    }
 
-  implicit def toLeaf[T](pair: (String, T)): (String, Node[T]) = {
-    val (key, value) = pair
-    key -> Leaf(value)
   }
 
-  def tree[T](nodes: (String, Node[T])*): Tree[T] = Tree(nodes)
+  object Node extends LL {
+    implicit def toBranch[A](pair: (String, Node[A])): Node[A] = {
+      val (name, node) = pair
+      Branch(name, node)
+    }
+  }
+  sealed trait Node[A] {
+    def map[B](f: A => B): Node[B]
+  }
+  case class Leaf[A](value: A) extends Node[A] {
+    def map[B](f: A => B) = Leaf(f(value))
+  }
+  case class Branch[A](name: String, node: Node[A]) extends Node[A] {
+    def map[B](f: A => B) = Branch(name, node.map(f))
+  }
+  case class Tree[A](nodes: Seq[Node[A]]) extends Node[A] {
+    def map[B](f: A => B) = Tree(nodes.map(_ map f))
+  }
 
-  "properties should derive their id from their class name" - {}
+  def tree[T](nodes: Node[T]*): Tree[T] = Tree(nodes)
 
   "automatic versioning by comparing document metadata" - {}
 
@@ -216,21 +223,19 @@ object DocumentSpec extends Specification {
         )
 
       val category = {
-        def item(featured: Boolean = false) = { (properties: Properties) =>
-          obj(
-            "label" -> properties("label"),
-            "featured" -> featured
-          )
-        }
+        def item(featured: Boolean = false): Properties => JsValue =
+          properties =>
+            obj(
+              "label" -> properties("label"),
+              "featured" -> featured
+            )
 
         EnumerationTree(id = "category")(
-          tree(
-            "music" -> tree(
-              "rock" -> item(featured = true),
-              "hippy" -> item()
-            ),
-            "movies" -> item(featured = true)
-          )
+          "music" -> tree(
+            "rock" -> item(featured = true),
+            "hippy" -> item()
+          ),
+          "movies" -> item(featured = true)
         )
       }
 
@@ -257,14 +262,11 @@ object DocumentSpec extends Specification {
           "date" -> Date.generated
         )
 
-      class TreeChoice(nodes:Tree[String]) extends Property("tree")
+      class TreeChoice(nodes: Tree[String]) extends Property("tree")
       object TreeChoice {
-        def apply(nodes:Seq[(String, Node[String])]) = 
-          new TreeChoice(Tree(nodes))
+        def apply(nodes: Node[String]*) = new TreeChoice(Tree(nodes))
       }
-        
-      def TreeChoice[T, N](nodes: (String, N)*)(implicit asNode: N => Node[T]) =
-        ??? //Node.toBranch(nodes)
+
       val event =
         Document(id = "event")(
           "title" -> Label,
@@ -287,7 +289,6 @@ object DocumentSpec extends Specification {
               ),
               "concert"
             )
-
           ),
           "minimumAge" -> Age
         )
