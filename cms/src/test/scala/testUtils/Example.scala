@@ -23,11 +23,6 @@ trait Example { self: Specification =>
     class Sub(part: Title) {
       def code[T <: ExampleContainer](code: self.type => T) =
         code(self).withPreviousParts[T](parts :+ part)
-
-      /*val withSpecification =
-        new ExampleContainer {
-          override val parts = self.parts :+ part
-        }.withSpecification _*/
     }
     def text(part: String) = new Sub(Text(part))
 

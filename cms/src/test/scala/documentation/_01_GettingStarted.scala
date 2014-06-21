@@ -2,8 +2,10 @@ package documentation
 
 import org.qirx.littlespec.Specification
 import testUtils.Example
+import testUtils.cmsName
 import org.qirx.cms.Cms
 import play.api.libs.json.Json.obj
+import play.api.libs.json.Json.arr
 import play.api.libs.json.JsValue
 import scala.language.reflectiveCalls
 import play.api.test.Helpers
@@ -12,14 +14,19 @@ import play.api.test.FakeApplication
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import akka.util.Timeout
+import play.api.Application
+import play.api.mvc.Request
+import play.api.http.Writeable
+import org.qirx.littlespec.reporter.MarkdownReporter
+import testUtils.GetFromApplication
+import testUtils.PostToApplication
+
 
 object _01_GettingStarted extends Specification with Example {
 
-  val cmsClassName = classOf[Cms].getSimpleName
-
   s"""|#Getting started
       |
-      |The first thing you need to do is to create an instance of `$cmsClassName`  
+      |The first thing you need to do is to create an instance of `$cmsName`  
       |and provide the information it needs to operate.""".stripMargin -
     new ExampleContainer {
       import org.qirx.cms.Cms
@@ -50,7 +57,7 @@ object _01_GettingStarted extends Specification with Example {
       )
     }
     .text(
-      s"""|The `$cmsClassName` has a single method to handle the requests,
+      s"""|The `$cmsName` has a single method to handle the requests,
           |this method will automatically select the appropriate action. 
           |Below an example of it within GlobalSettings.""".stripMargin)
     .code { body =>
@@ -69,6 +76,12 @@ object _01_GettingStarted extends Specification with Example {
       }
     }
     .withSpecification { body =>
+
+      val app = new FakeApplication(withGlobal = Some(body.CustomGlobal))
+
+      val POST = new PostToApplication(app)
+      val GET = new GetFromApplication(app)
+
       """|This gives you an API that consists of three parts:
          | - *private* - Allows you to manage documents
          | - *public* - Allows you to retrieve and search documents
@@ -76,30 +89,11 @@ object _01_GettingStarted extends Specification with Example {
          |
          |## The private API""".stripMargin - {
 
-        val app = new FakeApplication(withGlobal = Some(body.CustomGlobal))
-
-        object POST {
-          class WithTo(body: JsValue, header: Option[(String, String)] = None) {
-
-            def to(path: String) = {
-              val request = FakeRequest("POST", path)
-                .withHeaders(header.toSeq: _*)
-                .withBody(body)
-              val result = Helpers.running(app) {
-                Helpers.route(app, request).get
-              }
-              implicit val timeout = Timeout(1.second)
-              (Helpers.status(result), Helpers.contentAsJson(result))
-            }
-          }
-
-          def apply(json: JsValue) = new WithTo(json) {
-            def withHeader(header: (String, String)) = new WithTo(json, Some(header))
-          }
-        }
-
-        """|This part of the API allows you to change content, that's the 
-           |reason this requires authentication""".stripMargin - {
+        s"""|${moreInformation(_02_PrivateApi)}
+            |
+            |This part of the API allows you to change content, that's the 
+            |reason this requires authentication. Note that we have specified 
+            |the authentation mechanism when we created the `$cmsName`.""".stripMargin - {
           example {
             val article = obj("label" -> "Article 1")
             val auth = "X-Qirx-Authenticate" -> "let me in"
@@ -115,7 +109,7 @@ object _01_GettingStarted extends Specification with Example {
           val expectedResult = codeString {
             obj(
               "status" -> 403,
-              "error" -> "accessDenied"
+              "error" -> "forbidden"
             )
           }
 
@@ -132,12 +126,88 @@ object _01_GettingStarted extends Specification with Example {
             body is expectedResult.value
           }
         }
+
+      }
+      "## The public API" - {
+
+        s"""|${moreInformation(_03_PublicApi)}
+            |
+            |This part of the API allows you to search and retrieve content, 
+            |it does not require authentication.""".stripMargin - {
+          example {
+            val (status, body) = GET from "/api/public/article"
+
+            status is 200
+            body is arr(
+              obj(
+                "id" -> "article_1",
+                "label" -> "Article 1"
+              )
+            )
+          }
+        }
+      }
+      "## The metada API" - {
+
+        s"""|${moreInformation(_04_MetadataApi)}
+            |
+            |This part of the API allows you to retrieve the metadata of documents,
+            |it does not require authentication and is read-only.""".stripMargin - {
+
+          example {
+            val (status, body) = GET from "/api/metadata/article"
+
+            status is 200
+            body is arr(
+              obj(
+                "id" -> "article",
+                "properties" -> arr(
+                  obj(
+                    "id" -> "label",
+                    "name" -> "title"
+                  ),
+                  obj(
+                    "id" -> "rich_content",
+                    "name" -> "body",
+                    "optional" -> true,
+                    "extra" -> obj(
+                      "allowedElements" -> arr(
+                        "strong", "em", "ul", "ol", "li", "span[class|lang]",
+                        "a[href|hreflang|title|target]", "br", "p[class|lang]")
+                    )
+                  ),
+                  obj(
+                    "id" -> "tag",
+                    "name" -> "tags",
+                    "set" -> true,
+                    "nonEmpty" -> false
+                  ),
+                  obj(
+                    "id" -> "date",
+                    "name" -> "date",
+                    "generated" -> true
+                  )
+                )
+              )
+            )
+          }
+        }
+
       }
     }
 
-  /*{ body =>
-      
-    }
-    * 
-    */
+  def link[T](instance: T) = {
+    val fullyQualifiedName = instance.getClass.getName
+
+    val name = MarkdownReporter.name(fullyQualifiedName)
+    val fileName = MarkdownReporter.fileName(fullyQualifiedName)
+
+    val cleanFileName = fileName.replaceAll("\\$", "")
+    val cleanName = name.replaceAll("_", " ").replaceAll("\\$", "").trim
+
+    s"[$cleanName]($cleanFileName)"
+  }
+
+  def moreInformation[T](instance: T) =
+    s"For detailed information see ${link(instance)}"
 }
