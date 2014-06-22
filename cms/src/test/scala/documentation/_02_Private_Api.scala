@@ -149,8 +149,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       """|As you may have noticed, I accidentally created an article with 
          |the wrong title, let's fix that""".stripMargin - example {
         val article = obj(
-          "title" -> "Article 2",
-          "tags" -> arr("tag1")
+          "title" -> "Article 2"
         )
 
         val (status, body) = PUT(article) at "/article/article_3"
@@ -158,8 +157,16 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         body is null
       }
 
-      """|Note that we had to specify all fields. We could however select a
-         |few fields to be updated""".stripMargin - example {
+      "Note that the article is overwritten" - {
+        val (status, body) = GET from "/article/article_3"
+        status is 200
+        body is obj(
+          "id" -> "article_3",
+          "title" -> "Article 2"
+        )
+      }
+
+      "We could however select a few fields to be updated" - example {
         val article = obj(
           "tags" -> arr("tag1", "tag3")
         )
@@ -172,17 +179,33 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "id" -> "article_3",
           "title" -> "Article 2",
           "tags" -> arr("tag1", "tag3")
-
         )
       }
 
       "It's also possible to update the id." - example {
+        val article = obj(
+          "id" -> "article_2"
+        )
 
+        PUT(article) at "/article/article_3?fields=id"
+
+        val (status, body) = GET from "/article/article_2?fields=id,title"
+        status is 200
+        body is obj(
+          "id" -> "article_2",
+          "title" -> "Article 2"
+        )
       }
 
-      """|The old id however is maintained and we can still retrieve 
-         |the new document with it's old id.""".stripMargin - example {
+      """|The old id might already be stored somewhere so we can still 
+         |retrieve the new document with it's old id.""".stripMargin - example {
+        val (status, body) = GET from "/article/article_3?fields=id,title"
 
+        status is 200
+        body is obj(
+          "id" -> "article_2",
+          "title" -> "Article 2"
+        )
       }
     }
   }

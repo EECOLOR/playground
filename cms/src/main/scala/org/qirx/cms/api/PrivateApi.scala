@@ -81,10 +81,12 @@ class PrivateApi(
 
   private def handlePutRequest(document: DocumentMetadata, request: Request[AnyContent], remainingPath: Seq[String]) = {
     val id = remainingPath.head
-    system.performAction(Get(document, id, Set.empty)).flatMap {
-      case Some(obj) => handleDocumentUpdateRequest(document: DocumentMetadata, request: Request[AnyContent], obj)
-      case None => Future.successful(notFound)
-    }
+    if (remainingPath.tail.isEmpty)
+      system.performAction(Get(document, id, Set.empty)).flatMap {
+        case Some(obj) => handleDocumentUpdateRequest(document: DocumentMetadata, request: Request[AnyContent], obj)
+        case None => Future.successful(notFound)
+      }
+    else Future.successful(notFound)
   }
 
   private val badRequest = BadRequest(obj("status" -> BAD_REQUEST, "error" -> "badRequest"))

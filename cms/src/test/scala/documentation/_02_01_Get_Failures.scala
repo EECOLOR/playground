@@ -24,7 +24,14 @@ object _02_01_Get_Failures extends Specification with ApiExampleSpecification {
         "error" -> "notFound"
       )
     }
-    
-    "Non existent doucment" - {}
+
+    "Non existent doucment" - {
+      val (status, body) = GET from "/article/non_existing"
+      status is 404
+      body is obj(
+        "status" -> 404,
+        "error" -> "notFound"
+      )
+    }
   }
 }

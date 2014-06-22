@@ -8,13 +8,21 @@ import play.api.mvc.RequestHeader
 
 object TestApplication {
 
+  def fakeApplication(global: GlobalSettings) =
+    new FakeApplication(
+      withGlobal = Some(global),
+      additionalConfiguration = Map(
+        "messages.path" -> "conf",
+        "logger.root" -> "ERROR"
+      ))
+
   def apply(cms: Cms) = {
-    val global = new GlobalSettings {
+    val global =
+      new GlobalSettings {
+        override def onRouteRequest(request: RequestHeader): Option[Handler] =
+          cms.handle(request, orElse = super.onRouteRequest)
+      }
 
-      override def onRouteRequest(request: RequestHeader): Option[Handler] =
-        cms.handle(request, orElse = super.onRouteRequest)
-    }
-
-    new FakeApplication(withGlobal = Some(global))
+    fakeApplication(global)
   }
 }

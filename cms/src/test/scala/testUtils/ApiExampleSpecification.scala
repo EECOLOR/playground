@@ -35,10 +35,6 @@ trait ApiExampleSpecification extends Example { self: Specification =>
     }
 
     val app = TestApplication(cms.value)
-      .copy(additionalConfiguration = Map(
-        "messages.path" -> "conf",
-        "logger.root" -> "ERROR"
-      ))
 
     val messages = {
       val messagesUrl = app.classloader.getResource("conf/messages")

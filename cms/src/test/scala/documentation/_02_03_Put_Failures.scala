@@ -6,6 +6,7 @@ import testUtils.ApiExampleSpecification
 import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.arr
 import testUtils.PutToApplication
+import testUtils.GetFromApplication
 
 object _02_03_Put_Failures extends Specification with ApiExampleSpecification {
 
@@ -116,6 +117,16 @@ object _02_03_Put_Failures extends Specification with ApiExampleSpecification {
       body is obj(
         "status" -> 422,
         "error" -> "jsonObjectExpected"
+      )
+    }
+
+    "Wrong path" - example {
+      val (status, body) = PUT(obj()) at "/article/article_1/non_existing"
+
+      status is 404
+      body is obj(
+        "status" -> 404,
+        "error" -> "notFound"
       )
     }
   }

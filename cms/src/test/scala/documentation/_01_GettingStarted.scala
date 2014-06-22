@@ -22,6 +22,7 @@ import testUtils.GetFromApplication
 import testUtils.PostToApplication
 import testUtils.TestSystem
 import scala.reflect.ClassTag
+import testUtils.TestApplication
 
 
 object _01_GettingStarted extends Specification with Example {
@@ -81,7 +82,7 @@ object _01_GettingStarted extends Specification with Example {
     }
     .withSpecification { body =>
 
-      val app = new FakeApplication(withGlobal = Some(body.CustomGlobal))
+      val app = TestApplication.fakeApplication(body.CustomGlobal)
 
       val POST = new PostToApplication(app)
       val GET = new GetFromApplication(app)
