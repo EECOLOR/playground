@@ -1,5 +1,5 @@
 package documentation
 
-object _04_MetadataApi {
+class _04_MetadataApi {
 
 }

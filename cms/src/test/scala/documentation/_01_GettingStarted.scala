@@ -20,10 +20,14 @@ import play.api.http.Writeable
 import org.qirx.littlespec.reporter.MarkdownReporter
 import testUtils.GetFromApplication
 import testUtils.PostToApplication
+import testUtils.TestSystem
+import scala.reflect.ClassTag
 
 
 object _01_GettingStarted extends Specification with Example {
 
+  implicit val system = new TestSystem
+  
   s"""|#Getting started
       |
       |The first thing you need to do is to create an instance of `$cmsName`  
@@ -47,7 +51,7 @@ object _01_GettingStarted extends Specification with Example {
         pathPrefix = "/api",
         authentication = customAuthentication,
         documents = Seq(
-          Document(id = "article")(
+          Document(id = "article", idField = "title")(
             "title" -> Label,
             "body" -> RichContent.?,
             "tags" -> Tag.*,
@@ -89,21 +93,21 @@ object _01_GettingStarted extends Specification with Example {
          |
          |## The private API""".stripMargin - {
 
-        s"""|${moreInformation(_02_PrivateApi)}
+        s"""|${moreInformation[_02_Private_Api]}
             |
             |This part of the API allows you to change content, that's the 
             |reason this requires authentication. Note that we have specified 
             |the authentation mechanism when we created the `$cmsName`.""".stripMargin - {
           example {
-            val article = obj("label" -> "Article 1")
+            val article = obj("title" -> "Article 1")
             val auth = "X-Qirx-Authenticate" -> "let me in"
 
             val (status, body) = POST(article) withHeader auth to "/api/private/article"
 
-            status is 201
             body is obj(
               "id" -> "article_1"
             )
+            status is 201
           }
 
           val expectedResult = codeString {
@@ -130,7 +134,7 @@ object _01_GettingStarted extends Specification with Example {
       }
       "## The public API" - {
 
-        s"""|${moreInformation(_03_PublicApi)}
+        s"""|${moreInformation[_03_PublicApi]}
             |
             |This part of the API allows you to search and retrieve content, 
             |it does not require authentication.""".stripMargin - {
@@ -149,7 +153,7 @@ object _01_GettingStarted extends Specification with Example {
       }
       "## The metada API" - {
 
-        s"""|${moreInformation(_04_MetadataApi)}
+        s"""|${moreInformation[_04_MetadataApi]}
             |
             |This part of the API allows you to retrieve the metadata of documents,
             |it does not require authentication and is read-only.""".stripMargin - {
@@ -196,8 +200,8 @@ object _01_GettingStarted extends Specification with Example {
       }
     }
 
-  def link[T](instance: T) = {
-    val fullyQualifiedName = instance.getClass.getName
+  def link[T : ClassTag] = {
+    val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
 
     val name = MarkdownReporter.name(fullyQualifiedName)
     val fileName = MarkdownReporter.fileName(fullyQualifiedName)
@@ -208,6 +212,6 @@ object _01_GettingStarted extends Specification with Example {
     s"[$cleanName]($cleanFileName)"
   }
 
-  def moreInformation[T](instance: T) =
-    s"For detailed information see ${link(instance)}"
+  def moreInformation[T : ClassTag] =
+    s"For detailed information see ${link[T]}"
 }

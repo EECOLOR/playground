@@ -1,5 +1,5 @@
 package documentation
 
-object _03_PublicApi {
+class _03_PublicApi {
 
 }

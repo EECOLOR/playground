@@ -20,11 +20,12 @@ import org.qirx.cms.api.PrivateApi
 import org.qirx.cms.api.MetadataApi
 import org.qirx.cms.api.NoApi
 import org.qirx.cms.api.PublicApi
+import org.qirx.cms.system.System
 
 class Cms(
   pathPrefix: String,
   authentication: RequestHeader => Future[Boolean],
-  documents: Seq[DocumentMetadata]) extends Results with Status {
+  documents: Seq[DocumentMetadata])(implicit system:System) extends Results with Status {
 
   def handle(request: RequestHeader, orElse: RequestHeader => Option[Handler]) =
     if (request.path startsWith pathPrefix) Some(handleRequest)

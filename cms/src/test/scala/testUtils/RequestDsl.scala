@@ -8,6 +8,7 @@ import play.api.test.Helpers
 import akka.util.Timeout
 import play.api.test.FakeRequest
 import scala.concurrent.duration._
+import play.api.libs.json.Json
 
 trait RouteRequest {
   val app: Application
@@ -17,15 +18,21 @@ trait RouteRequest {
       val result = Helpers.route(app, request).get
 
       implicit val timeout = Timeout(2.seconds)
-      (Helpers.status(result), Helpers.contentAsJson(result))
+      
+      val content = Helpers.contentAsString(result)
+      val json = Option(content).filter(_.nonEmpty).map(Json.parse)
+      
+      (Helpers.status(result), json.orNull)
     }
 }
 
-class PostToApplication(val app: Application, pathPrefix: String = "") extends RouteRequest {
+abstract class WithBodyToApplication(method: String, val app: Application, pathPrefix: String) extends RouteRequest {
   class WithTo[T: Writeable](body: T, header: Option[(String, String)] = None) {
 
+    val at = to _
+    
     def to(path: String) = {
-      val request = FakeRequest("POST", pathPrefix + path)
+      val request = FakeRequest(method, pathPrefix + path)
         .withHeaders(header.toSeq: _*)
         .withBody(body)
 
@@ -39,10 +46,16 @@ class PostToApplication(val app: Application, pathPrefix: String = "") extends R
     }
 }
 
-class GetFromApplication(val app: Application) extends RouteRequest {
+class PostToApplication(app: Application, pathPrefix: String = "")
+  extends WithBodyToApplication("POST", app, pathPrefix)
+
+class PutToApplication(app: Application, pathPrefix: String = "")
+  extends WithBodyToApplication("PUT", app, pathPrefix)
+
+class GetFromApplication(val app: Application, pathPrefix: String = "") extends RouteRequest {
 
   def from(path: String) = {
-    val request = FakeRequest("POST", path)
+    val request = FakeRequest("GET", pathPrefix + path)
     import Helpers._
     routeRequest(request)
   }
