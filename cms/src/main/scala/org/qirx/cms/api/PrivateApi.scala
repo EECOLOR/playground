@@ -29,7 +29,7 @@ class PrivateApi(
 
   val documentMap = documents.map(d => d.id -> d).toMap
 
-  def handleRequest(remainingPath: Seq[String], request: Request[AnyContent])(implicit ec: ExecutionContext): Future[Result] =
+  def handleRequest(remainingPath: Seq[String], request: Request[AnyContent]): Future[Result] =
     authentication(request)
       .flatMap {
         case true => handleAuthenticatedRequest(remainingPath, request)

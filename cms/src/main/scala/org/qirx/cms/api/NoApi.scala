@@ -8,6 +8,6 @@ import play.api.mvc.Request
 import play.api.mvc.Result
 
 object NoApi extends Api {
-  def handleRequest(remainingPath: Seq[String], request: Request[AnyContent])(implicit ec:ExecutionContext): Future[Result] =
+  def handleRequest(remainingPath: Seq[String], request: Request[AnyContent]): Future[Result] =
     ???
 }
