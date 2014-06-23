@@ -13,75 +13,16 @@ import play.api.libs.json.JsObject
 import play.api.libs.json.Json.obj
 import play.api.mvc.Result
 import org.qirx.cms.i18n.Messages
+import org.qirx.cms.construction.Lifting._
+import org.qirx.cms.construction.Free
+import org.qirx.cms.construction.Action
+import org.qirx.cms.construction.Branching
+import org.qirx.cms.construction.Return
 
 class PrivateApi2(
   documents: Seq[DocumentMetadata],
   authentication: RequestHeader => Future[Boolean])(
     implicit system: System, ec: ExecutionContext) extends Api with Results with Status {
-
-  import scala.language.implicitConversions
-  import scala.language.higherKinds
-
-  sealed trait Free[F[_], A] {
-    def flatMap[B](f: A => Free[F, B]): Free[F, B] =
-      this match {
-        case Apply(a) => f(a)
-        case Bind(i, k) =>
-          Bind(i, k andThen (_ flatMap f))
-      }
-    def map[B](f: A => B): Free[F, B] =
-      flatMap(a => Apply(f(a)))
-
-    //for pattern matching
-    def withFilter(f: Any => Boolean): Free[F, A] = this
-  }
-
-  implicit def toFree[F[_], A](fa: F[A]): Free[F, A] =
-    Bind(fa, (a: A) => Apply(a))
-
-  case class Apply[F[_], A](t: A) extends Free[F, A]
-  case class Bind[F[_], A, B](i: F[A], k: A => Free[F, B]) extends Free[F, B]
-
-  class OrAction[A, B, ResultType](
-    helper: OrHelper[A, ResultType],
-    value: A,
-    orElse: => B) extends Action[ResultType]
-
-  trait OrHelper[A, B] {
-    def continueWithResultIf(a: A): Boolean
-    def toResult(a: A): B
-  }
-  object OrHelper {
-    implicit def optionOrHelper[A] =
-      new OrHelper[Option[A], A] {
-        def continueWithResultIf(a: Option[A]): Boolean = a.isDefined
-        def toResult(a: Option[A]): A = a.get
-      }
-
-    implicit def simpleOrHelper[A](implicit toBoolean: A => Boolean) =
-      new OrHelper[A, A] {
-        def continueWithResultIf(a: A): Boolean = toBoolean(a)
-        def toResult(a: A): A = a
-      }
-
-    implicit def seqOrHelper[T] = simpleOrHelper[Seq[T]](_.nonEmpty)
-  }
-
-  implicit class ActionOr[A, FreeAction, ResultType](action1: FreeAction)(
-    implicit toFreeAction: FreeAction => Free[Action, A],
-    helper: OrHelper[A, ResultType]) {
-
-    def or[B](action2: Free[Action, B]): Free[Action, ResultType] =
-      for {
-        value1 <- action1
-        value2 <- action2
-        result <- new OrAction(helper, value1, value2)
-      } yield result
-  }
-
-  trait Action[T]
-
-  case class Return[T](result: T) extends Action[T]
 
   case class Authenticate(request: Request[AnyContent]) extends Action[Boolean]
   case class GetDocumentMetadata(documentId: String) extends Action[Option[DocumentMetadata]]
@@ -89,29 +30,31 @@ class PrivateApi2(
   case class GetFieldSetFromQueryString(queryString: Map[String, Seq[String]]) extends Action[Set[String]]
   case class GetNextSegment(path: Seq[String]) extends Action[Option[(String, Seq[String])]]
 
-  case class JsValueToJsObject(value: JsValue) extends Action[Option[JsObject]]
-  case class RequestToJson(request: Request[AnyContent]) extends Action[Option[JsValue]]
+  case class ToJsObject(value: JsValue) extends Action[Option[JsObject]]
+  case class ToJsValue(request: Request[AnyContent]) extends Action[Option[JsValue]]
   case class GetMessages(meta: DocumentMetadata) extends Action[Messages]
-  case class ValidateDocument(meta: DocumentMetadata, document: JsObject, fieldSet: Set[String], messages: Messages) extends Action[Seq[JsObject]]
 
   case class ValitationResultsToResult(validationResults: Seq[JsObject]) extends Action[Result]
 
-  case class DocumentsToResult(documents: Seq[JsObject]) extends Action[Result]
-  case class DocumentToResult(document: JsObject) extends Action[Result]
+  case class DocumentsResult(documents: Seq[JsObject]) extends Action[Result]
+  case class DocumentResult(document: JsObject) extends Action[Result]
+  case class DocumentCreatedResult(id: String) extends Action[Result]
 
-  case class ListDocuments(meta: DocumentMetadata, fieldSet: Set[String]) extends Action[Seq[JsObject]]
-  case class GetDocument(meta: DocumentMetadata, id: String, fieldSet: Set[String]) extends Action[Option[JsObject]]
-  case class CreateDocument(meta: DocumentMetadata, document: JsObject) extends Action[String]
-  case class DocumentCreatedToResult(id: String) extends Action[Result]
-  case class UpdateDocument(meta: DocumentMetadata, id:String, oldDocument: JsObject, newDocument:JsObject) extends Action[Unit]
+  case class Validate(meta: DocumentMetadata, document: JsObject, fieldSet: Set[String], messages: Messages) extends Action[Seq[JsObject]]
+  case class List(meta: DocumentMetadata, fieldSet: Set[String]) extends Action[Seq[JsObject]]
+  case class Get(meta: DocumentMetadata, id: String, fieldSet: Set[String]) extends Action[Option[JsObject]]
+  case class Create(meta: DocumentMetadata, document: JsObject) extends Action[String]
+  case class Update(meta: DocumentMetadata, id:String, oldDocument: JsObject, newDocument:JsObject) extends Action[Unit]
 
+  import Branching._
+  
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
     val x =
       for {
-        _ <- Authenticate(request) or Return(forbidden)
-        (id, pathAtDocument) <- GetNextSegment(pathAtDocumentType) or Return(notFound)
-        meta <- GetDocumentMetadata(id) or Return(notFound)
+        _ <- Authenticate(request) ifFalse Return(forbidden)
+        (id, pathAtDocument) <- GetNextSegment(pathAtDocumentType) ifNone Return(notFound)
+        meta <- GetDocumentMetadata(id) ifNone Return(notFound)
         handler = new DocumentRequestHandler(meta, request, pathAtDocumentType)
         result <- request.method match {
           case "GET" => handler.get
@@ -127,48 +70,48 @@ class PrivateApi2(
     def get =
       for {
         fieldSet <- GetFieldSetFromQueryString(request.queryString)
-        (id, _) <- GetNextSegment(pathAtDocument) or list(fieldSet)
-        document <- GetDocument(meta, pathAtDocument.head, fieldSet) or Return(notFound)
-        result <- DocumentToResult(document)
+        (id, _) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
+        document <- Get(meta, id, fieldSet) ifNone Return(notFound)
+        result <- DocumentResult(document)
       } yield result
 
     def list(fieldSet: Set[String]) =
       for {
-        documents <- ListDocuments(meta, fieldSet)
-        result <- DocumentsToResult(documents)
+        documents <- List(meta, fieldSet)
+        result <- DocumentsResult(documents)
       } yield result
 
     def post =
       for {
-        json <- RequestToJson(request) or Return(badRequest)
-        document <- JsValueToJsObject(json) or Return(jsonExpected)
+        json <- ToJsValue(request) ifNone Return(badRequest)
+        document <- ToJsObject(json) ifNone Return(jsonExpected)
         messages <- GetMessages(meta)
-        results <- ValidateDocument(meta, document, Set.empty, messages) or create(document)
+        results <- Validate(meta, document, Set.empty, messages) ifEmpty create(document)
         result <- ValitationResultsToResult(results)
       } yield result
 
     def put =
       for {
-        json <- RequestToJson(request) or Return(badRequest)
-        newDocument <- JsValueToJsObject(json) or Return(jsonExpected)
+        json <- ToJsValue(request) ifNone Return(badRequest)
+        newDocument <- ToJsObject(json) ifNone Return(jsonExpected)
         messages <- GetMessages(meta)
-        (id, _) <- GetNextSegment(pathAtDocument) or Return(notFound)
-        oldDocument <- GetDocument(meta, id, Set.empty) or Return(notFound)
+        (id, _) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
+        oldDocument <- Get(meta, id, Set.empty) ifNone Return(notFound)
         fieldSet <- GetFieldSetFromQueryString(request.queryString)
-        results <- ValidateDocument(meta, newDocument, fieldSet, messages) or update(id, oldDocument, newDocument)
+        results <- Validate(meta, newDocument, fieldSet, messages) ifEmpty update(id, oldDocument, newDocument)
         result <- ValitationResultsToResult(results)
       } yield result
 
     def create(document: JsObject) = {
       for {
-        id <- CreateDocument(meta, document)
-        result <- DocumentCreatedToResult(id)
+        id <- Create(meta, document)
+        result <- DocumentCreatedResult(id)
       } yield result
     }
 
     def update(id: String, oldDocument: JsObject, newDocument: JsObject) = {
       for {
-        _ <- UpdateDocument(meta, id, oldDocument, newDocument)
+        _ <- Update(meta, id, oldDocument, newDocument)
       } yield noContent
     }
   }
