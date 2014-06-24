@@ -55,7 +55,7 @@ class PrivateApi2(
         _ <- Authenticate(request) ifFalse Return(forbidden)
         (id, pathAtDocument) <- GetNextSegment(pathAtDocumentType) ifNone Return(notFound)
         meta <- GetDocumentMetadata(id) ifNone Return(notFound)
-        handler = new DocumentRequestHandler(meta, request, pathAtDocumentType)
+        handler = new DocumentRequestHandler(meta, request, pathAtDocument)
         result <- request.method match {
           case "GET" => handler.get
           case "POST" => handler.post
