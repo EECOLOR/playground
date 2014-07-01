@@ -29,6 +29,10 @@ trait Free[F[_], A] {
         G.flatMap(transform(fa), f andThen (_ foldMap transform))
     }
   }
+  
+  // pattern match support
+  def withFilter(f: Any => Boolean): Free[F, A] =
+    this
 }
 
 object Free {
@@ -36,7 +40,7 @@ object Free {
   def apply[F[_], A](f: F[A]): Free[F, A] = FlatMap(f, Apply(_: A))
 
   type Id[x] = x
-
+  
   trait Monad[F[_]] {
     def apply[A](a: A): F[A]
     def flatMap[A, B](a: F[A], f: A => F[B]): F[B]

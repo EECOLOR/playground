@@ -23,6 +23,8 @@ import org.qirx.cms.construction.Return
 import org.qirx.cms.machinery.Program
 import org.qirx.cms.construction.BranchAction
 import org.qirx.cms.construction.Choose
+import org.qirx.cms.machinery.AvailableParts
+import org.qirx.cms.construction.Structure
 
 class PrivateApi2(
   documents: Seq[DocumentMetadata],
@@ -54,6 +56,8 @@ class PrivateApi2(
   case class Create(meta: DocumentMetadata, document: JsObject) extends Store[String]
   case class Update(meta: DocumentMetadata, id: String, oldDocument: JsObject, newDocument: JsObject) extends Store[Unit]
 
+  implicit val parts = AvailableParts[Defaults + Action + Return + Store + MetadataAction]
+
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
     val x =
@@ -64,7 +68,7 @@ class PrivateApi2(
         handler = new DocumentRequestHandler(meta, request, pathAtDocument)
         result <- request.method match {
           case "POST" => handler.post
-          //case "GET" => handler.get
+          case "GET" => handler.get
           case "PUT" => handler.put
         }
       } yield result
