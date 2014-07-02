@@ -14,52 +14,47 @@ import play.api.libs.json.Json.obj
 import play.api.mvc.Result
 import org.qirx.cms.i18n.Messages
 import org.qirx.cms.machinery.BuildTools._
-import qirx.Co
 import org.qirx.cms.machinery.Coproduct
 import org.qirx.cms.machinery.Coproduct.Transformations._
 import org.qirx.cms.machinery.~>
-import org.qirx.cms.construction.Action
 import org.qirx.cms.construction.Return
 import org.qirx.cms.machinery.Program
 import org.qirx.cms.construction.BranchAction
-import org.qirx.cms.construction.Choose
-import org.qirx.cms.machinery.AvailableParts
-import org.qirx.cms.construction.Structure
+import org.qirx.cms.machinery.Parts
+import org.qirx.cms.construction.api.ToJsObject
+import org.qirx.cms.construction.api.GetNextSegment
+import org.qirx.cms.construction.api.ToJsValue
+import org.qirx.cms.construction.api.GetFieldSetFromQueryString
+import org.qirx.cms.construction.api.DocumentsResult
+import org.qirx.cms.construction.GetMessages
+import org.qirx.cms.construction.api.DocumentResult
+import org.qirx.cms.construction.api.ValitationResultsToResult
+import org.qirx.cms.construction.api.DocumentCreatedResult
+import org.qirx.cms.construction.GetDocumentMetadata
+import org.qirx.cms.construction.Metadata
+import org.qirx.cms.construction.Authenticate
+import org.qirx.cms.construction.Update
+import org.qirx.cms.construction.Get
+import org.qirx.cms.construction.Validate
+import org.qirx.cms.construction.Create
+import org.qirx.cms.construction.Store
+import org.qirx.cms.construction.List
+import org.qirx.cms.construction.Authenticate
+import org.qirx.cms.construction.Authentication
+import org.qirx.cms.machinery.ProgramRunner
 
 class PrivateApi2(
   documents: Seq[DocumentMetadata],
   authentication: RequestHeader => Future[Boolean])(
-    implicit system: System, ec: ExecutionContext) extends Api with Results with Status {
-
-  case class Authenticate(request: Request[AnyContent]) extends Action[Boolean]
-
-  trait MetadataAction[T]
-  case class GetDocumentMetadata(documentId: String) extends MetadataAction[Option[DocumentMetadata]]
-  case class Validate(meta: DocumentMetadata, document: JsObject, fieldSet: Set[String], messages: Messages) extends MetadataAction[Seq[JsObject]]
-  case class GetMessages(meta: DocumentMetadata) extends MetadataAction[Messages]
-
-  case class GetFieldSetFromQueryString(queryString: Map[String, Seq[String]]) extends Action[Set[String]]
-  case class GetNextSegment(path: Seq[String]) extends Action[Option[(String, Seq[String])]]
-
-  case class ToJsObject(value: JsValue) extends Action[Option[JsObject]]
-  case class ToJsValue(request: Request[AnyContent]) extends Action[Option[JsValue]]
-
-  trait ResultCreation extends Action[Result]
-  case class ValitationResultsToResult(validationResults: Seq[JsObject]) extends ResultCreation
-  case class DocumentsResult(documents: Seq[JsObject]) extends ResultCreation
-  case class DocumentResult(document: JsObject) extends ResultCreation
-  case class DocumentCreatedResult(id: String) extends ResultCreation
-
-  trait Store[T]
-  case class List(meta: DocumentMetadata, fieldSet: Set[String]) extends Store[Seq[JsObject]]
-  case class Get(meta: DocumentMetadata, id: String, fieldSet: Set[String]) extends Store[Option[JsObject]]
-  case class Create(meta: DocumentMetadata, document: JsObject) extends Store[String]
-  case class Update(meta: DocumentMetadata, id: String, oldDocument: JsObject, newDocument: JsObject) extends Store[Unit]
-
-  implicit val parts = AvailableParts[Defaults + Action + Return + Store + MetadataAction]
+      implicit runner: ProgramRunner[Base + Store + Metadata + Authentication]) extends Api with Results with Status {
 
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
-
+    
+    // how to make sure we can create a program using a runner
+    val z = toProgram(Authenticate(request))
+    val y = toProgramWithRunner(Authenticate(request))
+    new BooleanContinuation(Authenticate(request))
+    
     val x =
       for {
         _ <- Authenticate(request) ifFalse Return(forbidden)

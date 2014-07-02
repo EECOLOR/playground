@@ -20,7 +20,6 @@ import org.qirx.cms.api.PrivateApi
 import org.qirx.cms.api.MetadataApi
 import org.qirx.cms.api.NoApi
 import org.qirx.cms.api.PublicApi
-import org.qirx.cms.system.System
 
 class Cms(
   pathPrefix: String,

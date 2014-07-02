@@ -1,20 +1,18 @@
 package org.qirx.cms.machinery
 
-import org.qirx.cms.construction.BranchAction
 import scala.language.higherKinds
-import org.qirx.cms.construction.Action
+import org.qirx.cms.construction.System
 import org.qirx.cms.construction.BranchAction
-import org.qirx.cms.construction.Structure
 
 trait Branching {
 
-  private type LiftTo[F[_]] = Structure ~> F
+  private type Lift[F[_]] = System ~> F
 
-  def branch[F[_]: AvailableParts: LiftTo, A, B, O[_]](p1: Program[F, A], p2: Program[F, B])(
+  def branch[F[_]: Lift, A, B, O[_]](p1: Program[F, A], p2: Program[F, B])(
     stayLeft: A => Boolean): Program[F, A] =
     Program(BranchAction(p1, p2, stayLeft))
 
-  implicit class BooleanContinuation[P, F[_]: AvailableParts: LiftTo](program1: P)(
+  implicit class BooleanContinuation[P, F[_]: Lift](program1: P)(
     implicit asBooleanProgram: P => Program[F, Boolean]) {
 
     def ifFalse[B](program2: Program[F, B]) =
@@ -24,7 +22,7 @@ trait Branching {
       branch(program1, program2)(stayLeft = !_)
   }
 
-  implicit class OptionContinuation[P, F[_]: AvailableParts: LiftTo, O, A](program1: P)(
+  implicit class OptionContinuation[P, F[_]: Lift, O, A](program1: P)(
     implicit asOptionProgram: P => Program[F, O],
     isOption: O => Option[A]) {
 
@@ -39,7 +37,7 @@ trait Branching {
       } yield result
   }
 
-  implicit class IterableContinuation[P, F[_]: AvailableParts: LiftTo, I, A](program1: P)(
+  implicit class IterableContinuation[P, F[_]: Lift, I, A](program1: P)(
     implicit asIterableProgram: P => Program[F, I],
     isIterable: I => Iterable[A]) {
 

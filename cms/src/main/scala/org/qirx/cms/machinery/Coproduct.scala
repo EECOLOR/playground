@@ -3,7 +3,6 @@ package org.qirx.cms.machinery
 import scala.language.higherKinds
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
-import _root_.qirx.Co
 
 object Coproduct {
 

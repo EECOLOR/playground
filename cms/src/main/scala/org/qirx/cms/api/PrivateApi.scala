@@ -14,19 +14,21 @@ import org.qirx.cms.metadata.DocumentMetadata
 import play.api.libs.json.JsValue
 import org.qirx.cms.i18n.Messages
 import play.api.libs.json.JsString
-import org.qirx.cms.system.System
-import org.qirx.cms.system.List
 import play.api.libs.json.Writes
 import play.api.libs.json.JsObject
-import org.qirx.cms.system.Get
-import org.qirx.cms.system.Update
-import org.qirx.cms.system.Create
+import org.qirx.cms.construction.Get
+import org.qirx.cms.construction.Update
+import org.qirx.cms.construction.Create
 
 class PrivateApi(
   documents: Seq[DocumentMetadata],
-  authentication: RequestHeader => Future[Boolean])(
-    implicit system: System, ec: ExecutionContext) extends Api with Results with Status {
+  authentication: RequestHeader => Future[Boolean])(implicit ec: ExecutionContext) extends Api with Results with Status {
 
+  trait System {
+    def performAction[T](x:Nothing):Future[T] = ???
+  }
+  val system:System = ???
+  
   val documentMap = documents.map(d => d.id -> d).toMap
 
   def handleRequest(remainingPath: Seq[String], request: Request[AnyContent]): Future[Result] =
@@ -60,11 +62,11 @@ class PrivateApi(
     val fields = request.queryString.get("fields")
     val fieldSet = fields.toSet.flatten.flatMap(_.split(","))
     if (remainingPath.isEmpty) {
-      system.performAction(List(document, fieldSet))
+      system.performAction(???/*List(document, fieldSet)*/)
         .map(implicitly[Writes[Seq[JsObject]]].writes)
         .map(Ok(_))
     } else {
-      system.performAction(Get(document, remainingPath.head, fieldSet))
+      system.performAction[Option[JsObject]](???/*Get(document, remainingPath.head, fieldSet)*/)
         .map {
           case Some(obj) => Ok(obj)
           case None => notFound
@@ -82,7 +84,7 @@ class PrivateApi(
   private def handlePutRequest(document: DocumentMetadata, request: Request[AnyContent], remainingPath: Seq[String]) = {
     val id = remainingPath.head
     if (remainingPath.tail.isEmpty)
-      system.performAction(Get(document, id, Set.empty)).flatMap {
+      system.performAction[Option[JsObject]](???/*Get(document, id, Set.empty)*/).flatMap {
         case Some(obj) => handleDocumentUpdateRequest(document: DocumentMetadata, request: Request[AnyContent], obj)
         case None => Future.successful(notFound)
       }
@@ -137,8 +139,8 @@ class PrivateApi(
       Future.successful {
         UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "propertyErrors" -> validationResults))
       }
-    else system.performAction(Update(document, oldObj, json, fieldSet))
-      .map(_ => NoContent)
+    else ???//system.performAction(Update(document, oldObj, json, fieldSet))
+      //.map(_ => NoContent)
   }
 
   private def handleJsonObjectDocumentCreateRequest(document: DocumentMetadata, json: JsObject) = {
@@ -156,7 +158,7 @@ class PrivateApi(
       Future.successful {
         UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "propertyErrors" -> validationResults))
       }
-    else system.performAction(Create(document, json))
+    else system.performAction(???/*Create(document, json)*/)
       .map(id => Created(obj("id" -> id)))
   }
 }

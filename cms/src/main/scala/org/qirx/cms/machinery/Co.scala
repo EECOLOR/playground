@@ -1,9 +1,8 @@
 // in a small package to make errors more readable
-package qirx
+package org.qirx.cms.machinery
 
 import scala.language.higherKinds
 import scala.annotation.implicitNotFound
-import org.qirx.cms.machinery.Coproduct
 
 /*
  * When we define this as Coproduct[F[_], G[_], x] implicit 
