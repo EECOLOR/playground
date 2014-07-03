@@ -4,29 +4,17 @@ import scala.language.higherKinds
 import org.qirx.cms.construction
 import org.qirx.cms.construction.System
 
-sealed trait TypeSet
+sealed trait TypeSet {
+  type Out[_]
+}
 
 object TypeSet {
 
-  trait Base extends TypeSet
-  trait +[Types <: TypeSet, Type[_]] extends TypeSet
-
-  trait ToType[Types <: TypeSet] {
-    type Out[_]
+  type Base = TypeSet {
+    type Out[x] = System[x]
   }
-
-  object ToType {
-    type Aux[Types <: TypeSet, O[_]] = ToType[Types] { type Out[x] = O[x] }
-
-    implicit def fromTypeSet[Types <: TypeSet, Type[_]](
-      implicit forTypes: ToType[Types]): ToType[Types + Type] {
-      type Out[x] = Co[Type, forTypes.Out]#Product[x]
-    } = null
-
-    implicit def fromBaseAndType[Type[_]]: ToType[Base + Type] {
-      type Out[x] = Co[Type, System]#Product[x]
-    } = null
-
+  type +[Types <: TypeSet, Type[_]] = TypeSet {
+    type Out[x] = Co[Type, Types#Out]#Product[x]
   }
 
   trait ToTypeSet[Type[_]] {

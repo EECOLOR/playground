@@ -39,8 +39,6 @@ object Free {
 
   def apply[F[_], A](f: F[A]): Free[F, A] = FlatMap(f, Apply(_: A))
 
-  type Id[x] = x
-  
   trait Monad[F[_]] {
     def apply[A](a: A): F[A]
     def flatMap[A, B](a: F[A], f: A => F[B]): F[B]
@@ -48,8 +46,6 @@ object Free {
 
   object Monad {
     def apply[F[_]: Monad]: Monad[F] = implicitly
-
-    type Id[x] = x
 
     implicit val idMonad =
       new Monad[Id] {

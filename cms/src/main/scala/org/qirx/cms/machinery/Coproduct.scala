@@ -110,24 +110,24 @@ object Coproduct {
   }
 
   trait LowerPriorityTransformations_3 {
-    
+
     implicit def none[Elem[_]](
       implicit ev: IsNotIdentity[Elem]) =
       new (Elem ~> Elem) {
-        def apply[x](elem: Elem[x]) = elem
+        def transform[x] = identity
       }
   }
-  
+
   trait LowerPriorityTransformations_2 extends LowerPriorityTransformations_3 {
     implicit def atHead[Elem[_], Tail[_]](
       implicit ev: IsNotCoproduct[Elem]) =
       new (Elem ~> (Elem :: Tail)#T) {
 
-        def apply[x](elem: Elem[x]) =
+        def transform[x] = elem =>
           new (Elem :: Tail).Product(Left(elem))
       }
   }
-  
+
   trait LowerPriorityTransformations_1 extends LowerPriorityTransformations_2 {
 
     implicit def inTail[Elem[_], Head[_], Tail[_]](
@@ -135,7 +135,7 @@ object Coproduct {
       ev2: IsNotCoproduct[Head],
       transformTail: Elem ~> Tail) =
       new (Elem ~> (Head :: Tail)#T) {
-        def apply[x](elem: Elem[x]) =
+        def transform[x] = elem =>
           new (Head :: Tail).Product(Right(transformTail(elem)))
       }
 
@@ -148,32 +148,26 @@ object Coproduct {
       transformHead: Elem ~> Target,
       transformTail: Tail ~> Target) =
       new ((Elem :: Tail)#T ~> Target) {
-        def apply[x](elem: (Elem :: Tail)#T[x]) =
-          elem.value match {
+        def transform[x] =
+          _.value match {
             case Left(head) => transformHead(head)
             case Right(tail) => transformTail(tail)
           }
       }
 
     implicit def transformSource[F[_], Target[_], G[_]](fToTarget: F ~> Target)(
-      implicit transform: G ~> F) =
-      new (G ~> Target) {
-        def apply[x](g: G[x]) = fToTarget(transform(g))
-      }
+      implicit gToF: G ~> F) = gToF andThen fToTarget
 
     implicit def transformTarget[F[_], Source[_], G[_]](
-      implicit transform: F ~> G) =
-      (sourceToF: Source ~> F) =>
-        new (Source ~> G) {
-          def apply[x](g: Source[x]) = transform(sourceToF(g))
-        }
+      implicit fToG: F ~> G) =
+      (sourceToF: Source ~> F) => sourceToF andThen fToG
   }
 
   implicit class TranformationEnhancement[Tail[_], Target[_]](fg: Tail ~> Target) {
     def or[T[_], Head[_]](hg: Head ~> T)(implicit ev: Head ~> T => Head ~> Target) =
       new ((Head :: Tail)#T ~> Target) {
-        def apply[x](elem: (Head :: Tail)#T[x]) =
-          elem.value match {
+        def transform[x] =
+          _.value match {
             case Left(head) => ev(hg) apply head
             case Right(tail) => fg(tail)
           }

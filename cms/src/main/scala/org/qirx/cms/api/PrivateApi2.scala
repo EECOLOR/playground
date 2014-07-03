@@ -19,7 +19,6 @@ import org.qirx.cms.machinery.Coproduct.Transformations._
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.construction.Return
 import org.qirx.cms.machinery.Program
-import org.qirx.cms.construction.BranchAction
 import org.qirx.cms.machinery.Parts
 import org.qirx.cms.construction.api.ToJsObject
 import org.qirx.cms.construction.api.GetNextSegment
@@ -42,20 +41,18 @@ import org.qirx.cms.construction.List
 import org.qirx.cms.construction.Authenticate
 import org.qirx.cms.construction.Authentication
 import org.qirx.cms.machinery.ProgramRunner
+import org.qirx.cms.machinery.TypeSet
+import org.qirx.cms.machinery.ProgramRunner
+import org.qirx.cms.machinery.Free
 
 class PrivateApi2(
-  documents: Seq[DocumentMetadata],
-  authentication: RequestHeader => Future[Boolean])(
-      implicit runner: ProgramRunner[Base + Store + Metadata + Authentication]) extends Api with Results with Status {
+    implicit runner: ProgramRunner[(Base + Store + Metadata + Authentication)#Out, Future]) extends Api with Results with Status {
 
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
-    
-    // how to make sure we can create a program using a runner
-    val z = toProgram(Authenticate(request))
-    val y = toProgramWithRunner(Authenticate(request))
+
     new BooleanContinuation(Authenticate(request))
     
-    val x =
+    val program =
       for {
         _ <- Authenticate(request) ifFalse Return(forbidden)
         (id, pathAtDocument) <- GetNextSegment(pathAtDocumentType) ifNone Return(notFound)
@@ -67,7 +64,8 @@ class PrivateApi2(
           case "PUT" => handler.put
         }
       } yield result
-    ???
+
+    runner.run(program)
   }
 
   class DocumentRequestHandler(meta: DocumentMetadata, request: Request[AnyContent], pathAtDocument: Seq[String]) {

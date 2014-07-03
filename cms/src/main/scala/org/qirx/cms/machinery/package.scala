@@ -5,6 +5,8 @@ import scala.language.implicitConversions
 
 package object machinery {
 
+  type Id[x] = x
+  
   type ~>[-F[_], +G[_]] = NaturalTransformation[F, G]
 
   type Program[F[_], A] = Free[F, A]
