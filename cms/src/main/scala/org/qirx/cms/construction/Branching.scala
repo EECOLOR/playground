@@ -6,6 +6,13 @@ import org.qirx.cms.machinery.Id
 import scala.language.higherKinds
 import org.qirx.cms.machinery.Apply
 
-sealed trait Branching[T]
+class Branch[B] {
+  case class Instance[A](value:Either[A, B])
+}
 
-case class Branched[F[_], A, B](value: Program[F, Either[A, B]]) extends Branching[A]
+object Branch {
+  def apply[B] = new Branch[B]
+}
+//sealed trait Branching[A]
+
+case class Branched[A, B](value: Either[A, B])// extends Branching[A]

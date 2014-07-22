@@ -17,12 +17,12 @@ trait ApiExampleSpecification extends Example { self: Specification =>
 
     val pathPrefix = "/api"
 
-    implicit val system = new TestSystem
+    implicit val store = new TestStore
 
     val cms = codeString {
       new Cms(
         pathPrefix = "/api",
-        authentication = { _ => Future.successful(true) },
+        authenticate = { _ => Future.successful(true) },
         documents = Seq(
           Document(id = "article", idField = "title")(
             "title" -> Label,

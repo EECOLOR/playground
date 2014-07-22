@@ -20,14 +20,14 @@ import play.api.http.Writeable
 import org.qirx.littlespec.reporter.MarkdownReporter
 import testUtils.GetFromApplication
 import testUtils.PostToApplication
-import testUtils.TestSystem
 import scala.reflect.ClassTag
 import testUtils.TestApplication
+import testUtils.TestStore
 
 
 object _01_GettingStarted extends Specification with Example {
 
-  implicit val system = new TestSystem
+  implicit val store = new TestStore
   
   s"""|#Getting started
       |
@@ -40,7 +40,7 @@ object _01_GettingStarted extends Specification with Example {
       import scala.concurrent.Future
       import play.api.mvc.RequestHeader
 
-      def customAuthentication(requestHeader: RequestHeader): Future[Boolean] =
+      def customAuthenticate(requestHeader: RequestHeader): Future[Boolean] =
         Future.successful {
           requestHeader.headers
             .get("X-Qirx-Authenticate")
@@ -50,7 +50,7 @@ object _01_GettingStarted extends Specification with Example {
 
       val cms = new Cms(
         pathPrefix = "/api",
-        authentication = customAuthentication,
+        authenticate = customAuthenticate,
         documents = Seq(
           Document(id = "article", idField = "title")(
             "title" -> Label,

@@ -44,14 +44,16 @@ import org.qirx.cms.machinery.ProgramRunner
 import org.qirx.cms.machinery.TypeSet
 import org.qirx.cms.machinery.ProgramRunner
 import org.qirx.cms.machinery.Free
+import org.qirx.cms.construction.Branched
+import org.qirx.cms.construction.Branch
+import org.qirx.cms.machinery.FutureResultBranch
 
-class PrivateApi2(
-    implicit runner: ProgramRunner[(Base + Store + Metadata + Authentication)#Out, Future]) extends Api with Results with Status {
+class PrivateApi2(runner: ProgramRunner[(Base + Store + Metadata + Authentication + Branch[Result]#Instance)#Out, FutureResultBranch])(implicit ec: ExecutionContext) extends Api with Results with Status {
 
+  implicit val r = runner
+  
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
-    new BooleanContinuation(Authenticate(request))
-    
     val program =
       for {
         _ <- Authenticate(request) ifFalse Return(forbidden)
@@ -65,7 +67,8 @@ class PrivateApi2(
         }
       } yield result
 
-    runner.run(program)
+    val branched = runner.run(program)
+    branched.value.map(_.value.merge)
   }
 
   class DocumentRequestHandler(meta: DocumentMetadata, request: Request[AnyContent], pathAtDocument: Seq[String]) {
@@ -98,10 +101,11 @@ class PrivateApi2(
         json <- ToJsValue(request) ifNone Return(badRequest)
         newDocument <- ToJsObject(json) ifNone Return(jsonExpected)
         messages <- GetMessages(meta)
-        (id, _) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
+        (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
+        _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
         oldDocument <- Get(meta, id, Set.empty) ifNone Return(notFound)
         fieldSet <- GetFieldSetFromQueryString(request.queryString)
-        results <- Validate(meta, newDocument, fieldSet, messages) ifEmpty update(id, oldDocument, newDocument)
+        results <- Validate(meta, newDocument, fieldSet, messages) ifEmpty update(id, oldDocument, newDocument, fieldSet)
         result <- ValitationResultsToResult(results)
       } yield result
 
@@ -112,9 +116,9 @@ class PrivateApi2(
       } yield result
     }
 
-    def update(id: String, oldDocument: JsObject, newDocument: JsObject) = {
+    def update(id: String, oldDocument: JsObject, newDocument: JsObject, fieldSet:Set[String]) = {
       for {
-        _ <- Update(meta, id, oldDocument, newDocument)
+        _ <- Update(meta, id, oldDocument, newDocument, fieldSet)
       } yield noContent
     }
   }
