@@ -111,25 +111,29 @@ class PrivateApi(
   val jsonExpected = UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "error" -> "jsonObjectExpected"))
   val badRequest = BadRequest(obj("status" -> BAD_REQUEST, "error" -> "badRequest"))
 
-  val runner = {
-    object ToFuture extends (Branch[Result]#Instance ~> FutureResultBranch) {
+  lazy val runner = {
+    import Transformations._
+
+    val branchRunner = BranchToFuture
+    val systemRunner = SystemRunner andThen IdToBranch andThen BranchToFuture
+    val metadataRunner = metadata andThen IdToBranch andThen BranchToFuture
+    val authenticationRunner = authentication andThen FutureToFutureBranch
+    val storeRunner = store andThen FutureToFutureBranch
+
+    storeRunner or systemRunner or metadataRunner or authenticationRunner or branchRunner
+  }
+  
+  object Transformations {
+    object BranchToFuture extends (Branch[Result]#Instance ~> FutureResultBranch) {
       def transform[x] = x => FutureResultBranch(Future successful x)
     }
 
-    object ToBranch extends (Id ~> Branch[Result]#Instance) {
+    object IdToBranch extends (Id ~> Branch[Result]#Instance) {
       def transform[x] = x => Branch[Result].Instance(Left(x))
     }
 
-    object ToFutureBranch extends (Future ~> FutureResultBranch) {
-      def transform[x] = x => FutureResultBranch(x map ToBranch.apply)
+    object FutureToFutureBranch extends (Future ~> FutureResultBranch) {
+      def transform[x] = x => FutureResultBranch(x map IdToBranch.apply)
     }
-
-    val branchRunner = ToFuture
-    val systemRunner = SystemRunner andThen ToBranch andThen ToFuture
-    val metadataRunner = metadata andThen ToBranch andThen ToFuture
-    val authenticationRunner = authentication andThen ToFutureBranch
-    val storeRunner = store andThen ToFutureBranch
-
-    storeRunner or systemRunner or metadataRunner or authenticationRunner or branchRunner
   }
 }
