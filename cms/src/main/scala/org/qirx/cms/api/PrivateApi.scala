@@ -1,164 +1,133 @@
 package org.qirx.cms.api
 
+import play.api.mvc.Request
+import play.api.mvc.AnyContent
+import play.api.mvc.Results
+import play.api.http.Status
+import play.api.mvc.Result
+import play.api.libs.json.JsObject
+import play.api.libs.json.Json.obj
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import play.api.http.Status
-import play.api.libs.json.Json.obj
-import play.api.libs.json.Json.arr
-import play.api.mvc.AnyContent
-import play.api.mvc.Request
-import play.api.mvc.RequestHeader
-import play.api.mvc.Result
-import play.api.mvc.Results
+
+import org.qirx.cms.construction.api._
 import org.qirx.cms.metadata.DocumentMetadata
-import play.api.libs.json.JsValue
-import org.qirx.cms.i18n.Messages
-import play.api.libs.json.JsString
-import play.api.libs.json.Writes
-import play.api.libs.json.JsObject
-import org.qirx.cms.construction.Get
-import org.qirx.cms.construction.Update
-import org.qirx.cms.construction.Create
+import org.qirx.cms.machinery.~>
+import org.qirx.cms.construction._
+import org.qirx.cms.machinery.FutureResultBranch
+import org.qirx.cms.machinery.ProgramType
+import org.qirx.cms.machinery.Id
+import org.qirx.cms.execution.SystemRunner
+import org.qirx.cms.machinery.BuildTools
 
 class PrivateApi(
-  documents: Seq[DocumentMetadata],
-  authentication: RequestHeader => Future[Boolean])(implicit ec: ExecutionContext) extends Api with Results with Status {
+  store: Store ~> Future,
+  metadata: Metadata ~> Id,
+  authentication: Authentication ~> Future)(
+    implicit ec: ExecutionContext) extends Api with Results with Status with BuildTools {
 
-  trait System {
-    def performAction[T](x:Nothing):Future[T] = ???
+  def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
+
+    val program = programFor(request, pathAtDocumentType)
+    val branched = program.foldMap(runner)
+    branched.value.map(_.value.merge)
   }
-  val system:System = ???
-  
-  val documentMap = documents.map(d => d.id -> d).toMap
 
-  def handleRequest(remainingPath: Seq[String], request: Request[AnyContent]): Future[Result] =
-    authentication(request)
-      .flatMap {
-        case true => handleAuthenticatedRequest(remainingPath, request)
-        case false =>
-          Future.successful {
-            Forbidden(obj("status" -> FORBIDDEN, "error" -> "forbidden"))
-          }
+  type Elements = ProgramType[(Base + Store + Metadata + Authentication + Branch[Result]#T)#T]
+
+  def programFor(request: Request[AnyContent], pathAtDocumentType: Seq[String])(implicit e: Elements) =
+    for {
+      _ <- Authenticate(request) ifFalse Return(forbidden)
+      (id, pathAtDocument) <- GetNextSegment(pathAtDocumentType) ifNone Return(notFound)
+      meta <- GetDocumentMetadata(id) ifNone Return(notFound)
+      handler = new DocumentRequestHandler(meta, request, pathAtDocument)
+      result <- request.method match {
+        case "POST" => handler.post
+        case "GET" => handler.get
+        case "PUT" => handler.put
       }
+    } yield result
 
-  private def handleAuthenticatedRequest(remainingPath: Seq[String], request: Request[AnyContent]) = {
-    val documentId = remainingPath.head
-    documentMap.get(documentId).map { document =>
-      handleDocumentRequest(document, request, remainingPath.tail)
-    } getOrElse Future.successful(notFound)
+  class DocumentRequestHandler(meta: DocumentMetadata, request: Request[AnyContent], pathAtDocument: Seq[String])(implicit e: Elements) {
+
+    def get =
+      for {
+        fieldSet <- GetFieldSetFromQueryString(request.queryString)
+        (id, _) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
+        document <- Get(meta, id, fieldSet) ifNone Return(notFound)
+        result <- DocumentResult(document)
+      } yield result
+
+    def list(fieldSet: Set[String]) =
+      for {
+        documents <- List(meta, fieldSet)
+        result <- DocumentsResult(documents)
+      } yield result
+
+    def post =
+      for {
+        json <- ToJsValue(request) ifNone Return(badRequest)
+        document <- ToJsObject(json) ifNone Return(jsonExpected)
+        messages <- GetMessages(meta)
+        results <- Validate(meta, document, Set.empty, messages) ifEmpty
+          create(document)
+        result <- ValitationResultsToResult(results)
+      } yield result
+
+    def put =
+      for {
+        json <- ToJsValue(request) ifNone Return(badRequest)
+        newDocument <- ToJsObject(json) ifNone Return(jsonExpected)
+        messages <- GetMessages(meta)
+        (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
+        _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+        oldDocument <- Get(meta, id, Set.empty) ifNone Return(notFound)
+        fieldSet <- GetFieldSetFromQueryString(request.queryString)
+        results <- Validate(meta, newDocument, fieldSet, messages) ifEmpty
+          update(id, oldDocument, newDocument, fieldSet)
+        result <- ValitationResultsToResult(results)
+      } yield result
+
+    def create(document: JsObject) = {
+      for {
+        id <- Create(meta, document)
+        result <- DocumentCreatedResult(id)
+      } yield result
+    }
+
+    def update(id: String, oldDocument: JsObject, newDocument: JsObject, fieldSet: Set[String]) = {
+      for {
+        _ <- Update(meta, id, oldDocument, newDocument, fieldSet)
+      } yield noContent
+    }
   }
 
+  val noContent = NoContent
   val notFound = NotFound(obj("status" -> NOT_FOUND, "error" -> "notFound"))
+  val forbidden = Forbidden(obj("status" -> FORBIDDEN, "error" -> "forbidden"))
+  val jsonExpected = UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "error" -> "jsonObjectExpected"))
+  val badRequest = BadRequest(obj("status" -> BAD_REQUEST, "error" -> "badRequest"))
 
-  private def handleDocumentRequest(document: DocumentMetadata, request: Request[AnyContent], remainingPath: Seq[String]) =
-    request.method match {
-      case "GET" => handleGetRequest(document, request, remainingPath)
-      case "POST" => handlePostRequest(document, request)
-      case "PUT" => handlePutRequest(document, request, remainingPath)
-      case _ => Future.successful(badRequest)
+  val runner = {
+    object ToFuture extends (Branch[Result]#Instance ~> FutureResultBranch) {
+      def transform[x] = x => FutureResultBranch(Future successful x)
     }
 
-  private def handleGetRequest(document: DocumentMetadata, request: Request[AnyContent], remainingPath: Seq[String]) = {
-    val fields = request.queryString.get("fields")
-    val fieldSet = fields.toSet.flatten.flatMap(_.split(","))
-    if (remainingPath.isEmpty) {
-      system.performAction(???/*List(document, fieldSet)*/)
-        .map(implicitly[Writes[Seq[JsObject]]].writes)
-        .map(Ok(_))
-    } else {
-      system.performAction[Option[JsObject]](???/*Get(document, remainingPath.head, fieldSet)*/)
-        .map {
-          case Some(obj) => Ok(obj)
-          case None => notFound
-        }
-    }
-  }
-
-  private def handlePostRequest(document: DocumentMetadata, request: Request[AnyContent]) =
-    request.body.asJson.map { json =>
-      handleJsonDocumentCreateRequest(document, json)
-    }.getOrElse {
-      Future.successful(badRequest)
+    object ToBranch extends (Id ~> Branch[Result]#Instance) {
+      def transform[x] = x => Branch[Result].Instance(Left(x))
     }
 
-  private def handlePutRequest(document: DocumentMetadata, request: Request[AnyContent], remainingPath: Seq[String]) = {
-    val id = remainingPath.head
-    if (remainingPath.tail.isEmpty)
-      system.performAction[Option[JsObject]](???/*Get(document, id, Set.empty)*/).flatMap {
-        case Some(obj) => handleDocumentUpdateRequest(document: DocumentMetadata, request: Request[AnyContent], obj)
-        case None => Future.successful(notFound)
-      }
-    else Future.successful(notFound)
-  }
-
-  private val badRequest = BadRequest(obj("status" -> BAD_REQUEST, "error" -> "badRequest"))
-
-  private def handleDocumentUpdateRequest(document: DocumentMetadata, request: Request[AnyContent], oldObj: JsObject) = {
-    val fields = request.queryString.get("fields")
-    val fieldSet = fields.toSet.flatten.flatMap(_.split(","))
-
-    request.body.asJson.map { json =>
-      handleJsonDocumentUpdateRequest(document, json, oldObj, fieldSet)
-    }.getOrElse {
-      Future.successful(badRequest)
+    object ToFutureBranch extends (Future ~> FutureResultBranch) {
+      def transform[x] = x => FutureResultBranch(x map ToBranch.apply)
     }
-  }
 
-  private def handleJsonDocumentUpdateRequest(document: DocumentMetadata, json: JsValue, oldObj: JsObject, fieldSet: Set[String]) =
-    json.asOpt[JsObject]
-      .map(handleJsonObjectDocumentUpdateRequest(document, _, oldObj, fieldSet))
-      .getOrElse {
-        Future.successful {
-          UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "error" -> "jsonObjectExpected"))
-        }
-      }
+    val branchRunner = ToFuture
+    val systemRunner = SystemRunner andThen ToBranch andThen ToFuture
+    val metadataRunner = metadata andThen ToBranch andThen ToFuture
+    val authenticationRunner = authentication andThen ToFutureBranch
+    val storeRunner = store andThen ToFutureBranch
 
-  private def handleJsonDocumentCreateRequest(document: DocumentMetadata, json: JsValue) =
-    json.asOpt[JsObject]
-      .map(handleJsonObjectDocumentCreateRequest(document, _))
-      .getOrElse {
-        Future.successful {
-          UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "error" -> "jsonObjectExpected"))
-        }
-      }
-
-  private def handleJsonObjectDocumentUpdateRequest(
-    document: DocumentMetadata, json: JsObject, oldObj: JsObject, fieldSet: Set[String]) = {
-    val messages = Messages.withPrefix(document.id)
-
-    val validationResults =
-      document.properties.flatMap {
-        case (name, property) if fieldSet.isEmpty || (fieldSet contains name) =>
-          val value = (json \ name).asOpt[JsValue]
-          val validationResult = property.validate(messages withPrefix name, value)
-          validationResult.map { _ + ("name" -> JsString(name)) }
-        case _ => None
-      }
-
-    if (validationResults.nonEmpty)
-      Future.successful {
-        UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "propertyErrors" -> validationResults))
-      }
-    else ???//system.performAction(Update(document, oldObj, json, fieldSet))
-      //.map(_ => NoContent)
-  }
-
-  private def handleJsonObjectDocumentCreateRequest(document: DocumentMetadata, json: JsObject) = {
-    val messages = Messages.withPrefix(document.id)
-
-    val validationResults =
-      document.properties.flatMap {
-        case (name, property) =>
-          val value = (json \ name).asOpt[JsValue]
-          val validationResult = property.validate(messages withPrefix name, value)
-          validationResult.map { _ + ("name" -> JsString(name)) }
-      }
-
-    if (validationResults.nonEmpty)
-      Future.successful {
-        UnprocessableEntity(obj("status" -> UNPROCESSABLE_ENTITY, "propertyErrors" -> validationResults))
-      }
-    else system.performAction(???/*Create(document, json)*/)
-      .map(id => Created(obj("id" -> id)))
+    storeRunner or systemRunner or metadataRunner or authenticationRunner or branchRunner
   }
 }

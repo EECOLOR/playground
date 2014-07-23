@@ -5,17 +5,22 @@ import scala.language.higherKinds
 import org.qirx.cms.construction
 import org.qirx.cms.construction.System
 
-object BuildTools extends BranchEnhancements {
+trait BuildTools extends BranchEnhancements with Coproduct.Transformations {
 
-  //  implicit def toTypeInferredProgram[F[_], A](fa:F[A]):TypeInferredProgram[F, A] = TypeInferredProgram(fa)
+  type TypeSet = {
+    type T[_]
+  }
 
   type Base = TypeSet {
-    type Out[x]= System[x]
+    type T[x] = System[x]
   }
-  type +[Types <: TypeSet, Type[_]] = TypeSet.+[Types, Type]
+  
+  type +[Types <: TypeSet, Type[_]] = TypeSet {
+    type T[x] = Co[Type, Types#T]#Product[x]
+  }
 
   implicit def toProgram[F[_], A, O[_]](fa: F[A])(
-    implicit parts: Parts[O],
+    implicit p: ProgramType[O],
     lift: F ~> O): Program[O, A] = Program(fa)
 
 }

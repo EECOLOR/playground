@@ -1,17 +1,18 @@
 package org.qirx.cms.execution
 
-import org.qirx.cms.metadata.DocumentMetadata
-import org.qirx.cms.construction.Metadata
-import scala.concurrent.Future
-import org.qirx.cms.construction.GetMessages
 import org.qirx.cms.construction.GetDocumentMetadata
+import org.qirx.cms.construction.GetMessages
+import org.qirx.cms.construction.Metadata
 import org.qirx.cms.construction.Validate
-import play.api.libs.json.JsValue
-import play.api.libs.json.JsString
 import org.qirx.cms.i18n.Messages
+import org.qirx.cms.machinery.Id
+import org.qirx.cms.machinery.~>
+import org.qirx.cms.metadata.DocumentMetadata
 
-class MetadataHandler(documents: Seq[DocumentMetadata])
-  extends (Metadata ~> Id) {
+import play.api.libs.json.JsString
+import play.api.libs.json.JsValue
+
+class MetadataRunner(documents: Seq[DocumentMetadata]) extends (Metadata ~> Id) {
 
   val documentMap = documents.map(d => d.id -> d).toMap
   

@@ -6,7 +6,6 @@ import play.api.libs.json.JsObject
 import play.api.mvc.Request
 import play.api.mvc.AnyContent
 
-
 case class ToJsValue(request: Request[AnyContent]) extends DirectAction[Option[JsValue]] {
   val result = request.body.asJson
 }

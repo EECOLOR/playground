@@ -9,93 +9,28 @@ object Coproduct {
   def apply[Head[_], Tail[_], x](value: Either[Head[x], Tail[x]])(
     implicit ev: Coproduct.NotAtLeft[Head]) = Co[Head, Tail].Product(value)
 
-  trait Is[F[_]]
-
-  object Is {
-    implicit def coproduct[Head[_], Tail[_]]: Is[Co[Head, Tail]#Product] = null
-  }
-
   @implicitNotFound("There can be no coproducts on the left, import Coproduct.proof._ if this is wrong, found: ${F}")
   type NotAtLeft[F[_]] = IsNotCoproduct[F]
 
-  type IsNotCoproduct[F[_]] = IsNot[F]
+  trait IsCoproduct[F[_]]
 
-  trait IsNot[F[_]]
+  object IsCoproduct {
+    implicit def coproduct[Head[_], Tail[_]]: IsCoproduct[Co[Head, Tail]#Product] = null
+  }
 
-  object IsNot {
+  trait IsNotCoproduct[F[_]]
+
+  object IsNotCoproduct {
     /*
        For types that are a coproduct we provide an ambigous IsNot
        value, this makes the real one unusable
      */
-    implicit def isCoproduct[F[_]](implicit ev: Is[F]): IsNot[F] = null
-    implicit def isNotCoproduct[F[_]]: IsNot[F] = null
-    implicit def nothingIsNotCoproduct: IsNot[Nothing] = null
+    implicit def isCoproduct[F[_]](implicit ev: IsCoproduct[F]): IsNotCoproduct[F] = null
+    implicit def isNotCoproduct[F[_]]: IsNotCoproduct[F] = null
+    implicit def nothingIsNotCoproduct: IsNotCoproduct[Nothing] = null
   }
 
-  type ::[Head[_], Tail[_]] = Co[Head, Tail]
-
-  trait contains[List[_], Elem[_]]
-
-  object contains {
-
-    implicit def atHead[Head[_], Tail[_]]: (Head :: Tail)#T contains Head = null
-
-    implicit def inTail[Elem[_], Head[_], Tail[_]](
-      implicit ev: Tail contains Elem): (Head :: Tail)#T contains Elem = null
-
-    implicit def isElem[Elem[_]]: Elem contains Elem = null
-  }
-
-  trait union[Left[_], Right[_]] {
-    type Out[_]
-  }
-
-  trait LowestPriorityUnion {
-
-    implicit def pair[Left[_], Right[_]](
-      implicit ev: IsNotCoproduct[Left]): (Left union Right) {
-      type Out[x] = (Left :: Right)#T[x]
-    } = null
-
-    implicit def headNotInRight[Head[_], Tail[_], Right[_]](
-      implicit tailRightUnion: Tail union Right): ((Head :: Tail)#T union Right) {
-      type Out[x] = (Head :: tailRightUnion.Out)#T[x]
-    } = null
-  }
-
-  trait LowerPriorityUnion extends LowestPriorityUnion {
-
-    implicit def headInRight[Head[_], Tail[_], Right[_]](
-      implicit ev: Right contains Head,
-      tailRightUnion: Tail union Right): ((Head :: Tail)#T union Right) {
-      type Out[x] = tailRightUnion.Out[x]
-    } = null
-  }
-
-  object union extends LowerPriorityUnion {
-
-    // this crashes the compiler
-    //type Aux[Left[_], Right[_], O[_]] = (Left union Right) { type Out[x] = O[x] }
-    trait Aux[Left[_], Right[_], O[_]]
-    object Aux {
-      implicit def proxy[Left[_], Right[_]](
-        implicit u: Left union Right): Aux[Left, Right, u.Out] = null
-    }
-
-    implicit def leftContainsRight[Head[_], Tail[_], Right[_]](
-      implicit ev: (Head :: Tail)#T contains Right): ((Head :: Tail)#T union Right) {
-      type Out[x] = (Head :: Tail)#T[x]
-    } = null
-
-    implicit def rightContainsLeft[Left[_], Head[_], Tail[_]](
-      implicit ev: (Head :: Tail)#T contains Left): (Left union (Head :: Tail)#T) {
-      type Out[x] = (Head :: Tail)#T[x]
-    } = null
-
-    implicit def same[Elem[_]]: (Elem union Elem) {
-      type Out[x] = Elem[x]
-    } = null
-  }
+  private type ::[Head[_], Tail[_]] = Co[Head, Tail]
 
   trait IsIdentity[F[_]]
   object IsIdentity {
@@ -109,16 +44,13 @@ object Coproduct {
     implicit def notIdentity[F[_]]: IsNotIdentity[F] = null
   }
 
-  trait LowerPriorityTransformations_3 {
-
+  trait Transformations {
     implicit def none[Elem[_]](
       implicit ev: IsNotIdentity[Elem]) =
       new (Elem ~> Elem) {
         def transform[x] = identity
       }
-  }
 
-  trait LowerPriorityTransformations_2 extends LowerPriorityTransformations_3 {
     implicit def atHead[Elem[_], Tail[_]](
       implicit ev: IsNotCoproduct[Elem]) =
       new (Elem ~> (Elem :: Tail)#T) {
@@ -126,9 +58,6 @@ object Coproduct {
         def transform[x] = elem =>
           new (Elem :: Tail).Product(Left(elem))
       }
-  }
-
-  trait LowerPriorityTransformations_1 extends LowerPriorityTransformations_2 {
 
     implicit def inTail[Elem[_], Head[_], Tail[_]](
       implicit ev1: IsNotCoproduct[Elem],
@@ -138,10 +67,6 @@ object Coproduct {
         def transform[x] = elem =>
           new (Head :: Tail).Product(Right(transformTail(elem)))
       }
-
-  }
-
-  object Transformations extends LowerPriorityTransformations_1 {
 
     implicit def elemIsCoProduct[Elem[_], Tail[_], Target[_]](
       implicit ev: IsNotCoproduct[Elem],
@@ -158,52 +83,5 @@ object Coproduct {
     implicit def transformSource[F[_], Target[_], G[_]](fToTarget: F ~> Target)(
       implicit gToF: G ~> F) = gToF andThen fToTarget
 
-    implicit def transformTarget[F[_], Source[_], G[_]](
-      implicit fToG: F ~> G) =
-      (sourceToF: Source ~> F) => sourceToF andThen fToG
-  }
-
-  implicit class TranformationEnhancement[Tail[_], Target[_]](fg: Tail ~> Target) {
-    def or[T[_], Head[_]](hg: Head ~> T)(implicit ev: Head ~> T => Head ~> Target) =
-      new ((Head :: Tail)#T ~> Target) {
-        def transform[x] =
-          _.value match {
-            case Left(head) => ev(hg) apply head
-            case Right(tail) => fg(tail)
-          }
-      }
-  }
-
-  type |[Left[_], Right[_]] = Combined[Left, Right]
-
-  trait Combined[Left[_], Right[_]] {
-    type Out[_]
-    def transformLeft: Left ~> Out
-    def transformRight: Right ~> Out
-  }
-
-  trait LowerPriorityCombined {
-    implicit def combine[Left[_], Right[_], O[_]](
-      implicit u: union.Aux[Left, Right, O],
-      l: Left ~> O,
-      r: Right ~> O) =
-      new (Left | Right) {
-        type Out[x] = O[x]
-        val transformLeft = l
-        val transformRight = r
-      }
-  }
-
-  object Combined extends LowerPriorityCombined {
-    type Aux[Left[_], Right[_], O[_]] = Combined[Left, Right] { type Out[x] = O[x] }
-
-    implicit def single[Elem[_]](
-      implicit isNot: IsNotIdentity[Elem]) =
-      new (Elem | Elem) {
-        type Out[x] = Elem[x]
-
-        val transformLeft = Transformations.none[Elem]
-        val transformRight = Transformations.none[Elem]
-      }
   }
 }
