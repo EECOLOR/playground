@@ -9,11 +9,11 @@ import play.api.libs.json.Json.arr
 object _02_02_Post_Failures extends Specification with ApiExampleSpecification {
 
   val privateApiPrefix = "/api/private"
-  
+
   withApiExampleIntroduction(apiPrefix = privateApiPrefix) { app =>
 
     val POST = new PostToApplication(app, privateApiPrefix)
-    
+
     "Invalid instance" - example {
       val article = obj(
         "title" -> 0,
@@ -88,14 +88,24 @@ object _02_02_Post_Failures extends Specification with ApiExampleSpecification {
         "error" -> "notFound"
       )
     }
-    
+
     "Wrong document json" - example {
       val (status, body) = POST(arr()) to "/article"
-      
+
       status is 422
       body is obj(
-          "status" -> 422,
-          "error" -> "jsonObjectExpected"
+        "status" -> 422,
+        "error" -> "jsonObjectExpected"
+      )
+    }
+
+    "Wrong path" - example {
+      val (status, body) = POST(obj()) to "/article/non_existing"
+
+      status is 404
+      body is obj(
+        "status" -> 404,
+        "error" -> "notFound"
       )
     }
   }

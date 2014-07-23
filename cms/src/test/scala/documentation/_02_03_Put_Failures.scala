@@ -110,6 +110,16 @@ object _02_03_Put_Failures extends Specification with ApiExampleSpecification {
       )
     }
 
+    "Non exsistent document" - example {
+      val (status, body) = PUT(obj()) at "/article/non_existing"
+
+      status is 404
+      body is obj(
+        "status" -> 404,
+        "error" -> "notFound"
+      )
+    }
+
     "Wrong document json" - example {
       val (status, body) = PUT(arr()) at "/article/article_1"
 

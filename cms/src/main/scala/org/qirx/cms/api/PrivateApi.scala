@@ -54,7 +54,8 @@ class PrivateApi(
     def get =
       for {
         fieldSet <- GetFieldSetFromQueryString(request.queryString)
-        (id, _) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
+        (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
+        _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
         document <- Get(meta, id, fieldSet) ifNone Return(notFound)
         result <- DocumentResult(document)
       } yield result
@@ -67,6 +68,7 @@ class PrivateApi(
 
     def post =
       for {
+        _ <- GetNextSegment(pathAtDocument) ifSome Return(notFound)
         json <- ToJsValue(request) ifNone Return(badRequest)
         document <- ToJsObject(json) ifNone Return(jsonExpected)
         messages <- GetMessages(meta)
