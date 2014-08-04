@@ -8,9 +8,9 @@ import play.api.mvc.RequestHeader
 
 object TestApplication {
 
-  def fakeApplication(global: GlobalSettings) =
+  def fakeApplication(global: Option[GlobalSettings] = None) =
     new FakeApplication(
-      withGlobal = Some(global),
+      withGlobal = global,
       additionalConfiguration = Map(
         "messages.path" -> "conf",
         "logger.root" -> "ERROR"
@@ -23,6 +23,6 @@ object TestApplication {
           cms.handle(request, orElse = super.onRouteRequest)
       }
 
-    fakeApplication(global)
+    fakeApplication(Some(global))
   }
 }

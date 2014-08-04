@@ -5,15 +5,17 @@ import org.qirx.cms.metadata.PropertyMetadata
 import play.api.libs.json.JsObject
 import org.qirx.cms.metadata.DocumentIdGenerator
 import java.text.Normalizer
+import org.qirx.cms.metadata.Evolution
 
 object Document {
   def apply(id: String, idField: String)(properties: (String, PropertyMetadata)*): DocumentMetadata =
-    new DefaultDocument(id, idField, properties.toMap)
+    DefaultDocument(id, idField, properties.toMap)
 
-  private class DefaultDocument(
-    val id: String,
-    val idField: String,
-    val properties: Map[String, PropertyMetadata]) extends DocumentMetadata {
+  private case class DefaultDocument(
+    id: String,
+    idField: String,
+    properties: Map[String, PropertyMetadata],
+    evolutions: Seq[Evolution] = Seq.empty) extends DocumentMetadata {
 
     val idGenerator =
       new DocumentIdGenerator {
@@ -25,10 +27,13 @@ object Document {
             normalizedValue.replaceAll("[^a-zA-Z0-9 _-]", "")
 
           val lowerCase = alphaNumericWithSpaces.toLowerCase
-            
+
           lowerCase.replaceAll(" ", "_")
         }
         def makeUnique(id: String, value: JsObject): String = ???
       }
+
+    def withEvolutions(evolutions: Evolution*) =
+      copy(evolutions = this.evolutions ++ evolutions)
   }
 }

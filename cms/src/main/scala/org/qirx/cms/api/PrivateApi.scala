@@ -20,13 +20,17 @@ import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.Id
 import org.qirx.cms.execution.SystemRunner
 import org.qirx.cms.machinery.BuildTools
+import org.qirx.cms.machinery.ExecutionTools
 
 class PrivateApi(
   store: Store ~> Future,
   metadata: Metadata ~> Id,
   authentication: Authentication ~> Future)(
-    implicit ec: ExecutionContext) extends Api with Results with Status with BuildTools {
+    implicit ec: ExecutionContext) extends Api with Results with Status 
+    with BuildTools with ExecutionTools {
 
+  val executionContext = ec
+  
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathAtDocumentType)
@@ -56,13 +60,13 @@ class PrivateApi(
         fieldSet <- GetFieldSetFromQueryString(request.queryString)
         (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
         _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
-        document <- Get(meta, id, fieldSet) ifNone Return(notFound)
+        document <- Get(meta.id, id, fieldSet) ifNone Return(notFound)
         result <- DocumentResult(document)
       } yield result
 
     def list(fieldSet: Set[String]) =
       for {
-        documents <- List(meta, fieldSet)
+        documents <- List(meta.id, fieldSet)
         result <- DocumentsResult(documents)
       } yield result
 
@@ -84,7 +88,7 @@ class PrivateApi(
         messages <- GetMessages(meta)
         (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
         _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
-        oldDocument <- Get(meta, id, Set.empty) ifNone Return(notFound)
+        oldDocument <- Get(meta.id, id, Set.empty) ifNone Return(notFound)
         fieldSet <- GetFieldSetFromQueryString(request.queryString)
         results <- Validate(meta, newDocument, fieldSet, messages) ifEmpty
           update(id, oldDocument, newDocument, fieldSet)
@@ -92,17 +96,17 @@ class PrivateApi(
       } yield result
 
     def create(document: JsObject) = {
+      val id = meta.idGenerator.generateFor(document)
       for {
-        id <- Create(meta, document)
+        _ <- Create(meta.id, id, document)
         result <- DocumentCreatedResult(id)
       } yield result
     }
 
-    def update(id: String, oldDocument: JsObject, newDocument: JsObject, fieldSet: Set[String]) = {
+    def update(id: String, oldDocument: JsObject, newDocument: JsObject, fieldSet: Set[String]) =
       for {
-        _ <- Update(meta, id, oldDocument, newDocument, fieldSet)
+        _ <- Update(meta.id, id, oldDocument, newDocument, fieldSet)
       } yield noContent
-    }
   }
 
   val noContent = NoContent
@@ -112,8 +116,6 @@ class PrivateApi(
   val badRequest = BadRequest(obj("status" -> BAD_REQUEST, "error" -> "badRequest"))
 
   lazy val runner = {
-    import Transformations._
-
     val branchRunner = BranchToFuture
     val systemRunner = SystemRunner andThen IdToBranch andThen BranchToFuture
     val metadataRunner = metadata andThen IdToBranch andThen BranchToFuture
@@ -121,19 +123,5 @@ class PrivateApi(
     val storeRunner = store andThen FutureToFutureBranch
 
     storeRunner or systemRunner or metadataRunner or authenticationRunner or branchRunner
-  }
-  
-  object Transformations {
-    object BranchToFuture extends (Branch[Result]#Instance ~> FutureResultBranch) {
-      def transform[x] = x => FutureResultBranch(Future successful x)
-    }
-
-    object IdToBranch extends (Id ~> Branch[Result]#Instance) {
-      def transform[x] = x => Branch[Result].Instance(Left(x))
-    }
-
-    object FutureToFutureBranch extends (Future ~> FutureResultBranch) {
-      def transform[x] = x => FutureResultBranch(x map IdToBranch.apply)
-    }
   }
 }

@@ -23,12 +23,11 @@ import testUtils.PostToApplication
 import scala.reflect.ClassTag
 import testUtils.TestApplication
 import testUtils.TestStore
+import testUtils.TestEnvironment
 
 
 object _01_GettingStarted extends Specification with Example {
 
-  implicit val store = new TestStore
-  
   s"""|#Getting started
       |
       |The first thing you need to do is to create an instance of `$cmsName`  
@@ -51,6 +50,7 @@ object _01_GettingStarted extends Specification with Example {
       val cms = new Cms(
         pathPrefix = "/api",
         authenticate = customAuthenticate,
+        environment = new TestEnvironment,
         documents = Seq(
           Document(id = "article", idField = "title")(
             "title" -> Label,
@@ -82,7 +82,7 @@ object _01_GettingStarted extends Specification with Example {
     }
     .withSpecification { body =>
 
-      val app = TestApplication.fakeApplication(body.CustomGlobal)
+      val app = TestApplication.fakeApplication(Some(body.CustomGlobal))
 
       val POST = new PostToApplication(app)
       val GET = new GetFromApplication(app)
