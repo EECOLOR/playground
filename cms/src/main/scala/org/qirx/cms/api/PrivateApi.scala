@@ -26,11 +26,11 @@ class PrivateApi(
   store: Store ~> Future,
   metadata: Metadata ~> Id,
   authentication: Authentication ~> Future)(
-    implicit ec: ExecutionContext) extends Api with Results with Status 
-    with BuildTools with ExecutionTools {
+    implicit ec: ExecutionContext) extends Api with Results with Status
+  with BuildTools with ExecutionTools {
 
   val executionContext = ec
-  
+
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathAtDocumentType)
@@ -98,14 +98,21 @@ class PrivateApi(
     def create(document: JsObject) = {
       val id = meta.idGenerator.generateFor(document)
       for {
-        _ <- Create(meta.id, id, document)
+        documentWithId <- AddId(document, id)
+        _ <- Save(meta.id, id, documentWithId)
         result <- DocumentCreatedResult(id)
       } yield result
     }
 
     def update(id: String, oldDocument: JsObject, newDocument: JsObject, fieldSet: Set[String]) =
       for {
-        _ <- Update(meta.id, id, oldDocument, newDocument, fieldSet)
+        merged <- Merge(oldDocument, newDocument, fieldSet)
+        newId <- ExtractId(newDocument)
+        actualId = newId.getOrElse(id)
+        documentWithId <- AddId(merged, actualId)
+        _ <- SaveIdReference(meta.id, id, newId)
+        _ <- Delete(meta.id, id)
+        _ <- Save(meta.id, actualId, documentWithId)
       } yield noContent
   }
 

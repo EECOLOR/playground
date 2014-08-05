@@ -30,6 +30,7 @@ import org.qirx.cms.construction.Validate
 import org.qirx.cms.construction.GetMessages
 import org.qirx.cms.execution.SystemRunner
 import scala.concurrent.Await
+import org.qirx.cms.execution.VersionedStore
 
 class Cms(
   pathPrefix: String,
@@ -40,6 +41,7 @@ class Cms(
 
   val executionContext = play.api.libs.concurrent.Execution.Implicits.defaultContext
 
+  val store = new VersionedStore(environment.store, documents.map(meta => meta.id -> meta.evolutions).toMap)
   val metadata = new MetadataRunner(documents)
   val authentication = new AuthenticationRunner(authenticate)
   
@@ -63,7 +65,10 @@ class Cms(
       .split("/")
       .filter(_.nonEmpty)
 
-  lazy val privateApi = new PrivateApi(environment.store, metadata, authentication)
+  lazy val privateApi = new PrivateApi(
+      store, 
+          metadata, 
+          authentication)
 
   private val determineApiFor: String => Api = {
     case "private" => privateApi
@@ -86,9 +91,8 @@ class Cms(
         documents <- List(meta.id, Set.empty)
         document <- documents.asProgram
         result <- Validate(meta, document, Set.empty, messages)
-      } yield {
+      } yield if (result.nonEmpty)
         environment.reportDocumentMetadataMismatch(document, meta, result)
-      }
     }
 
     type FutureSeq[T] = Future[Seq[T]]
@@ -111,7 +115,7 @@ class Cms(
 
     val seqRunner = SeqToFutureSeq
     val metadataRunner = metadata andThen IdToFuture andThen FutureToFutureSeq
-    val storeRunner = environment.store andThen FutureToFutureSeq
+    val storeRunner = store andThen FutureToFutureSeq
     val systemRunner = SystemRunner andThen IdToFuture andThen FutureToFutureSeq
 
     val runner = seqRunner or metadataRunner or storeRunner or systemRunner

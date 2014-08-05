@@ -139,5 +139,9 @@ object _02_03_Put_Failures extends Specification with ApiExampleSpecification {
         "error" -> "notFound"
       )
     }
+    
+    "Invalid id update" - {
+      // when id is updated to an id that is already in use
+    }
   }
 }

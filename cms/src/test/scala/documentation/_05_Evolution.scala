@@ -9,7 +9,7 @@ import testUtils.TestStore
 import org.qirx.cms.metadata.properties.Label
 import org.qirx.cms.metadata.dsl.Document
 import testUtils.TestEnvironment
-import org.qirx.cms.construction.Create
+import org.qirx.cms.construction.Save
 import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.arr
 import play.api.libs.json.__
@@ -21,6 +21,7 @@ import play.api.libs.json.JsObject
 import org.qirx.cms.metadata.DocumentMetadata
 import play.api.test.Helpers
 import testUtils.TestApplication
+import play.api.libs.json.JsValue
 
 object _05_Evolution extends Specification with Example {
 
@@ -72,12 +73,12 @@ object _05_Evolution extends Specification with Example {
           }
 
         def createPreviousDocument(document: JsObject) = {
-          Await.result(testStore(Create("article", "article1", document)), 1.second)
+          Await.result(testStore(Save("article", "article1", document)), 1.second)
           document
         }
 
         val previousDocument = createPreviousDocument(
-          obj("header" -> "article1", "id" -> "article1"))
+          obj("header" -> "article1", "id" -> "article1", "_version" -> 0))
 
         val newDocumentMetadata = Document(id = "article", idField = "title")(
           "title" -> Label
@@ -99,7 +100,7 @@ object _05_Evolution extends Specification with Example {
           )
         )
 
-        val expectedReport = (previousDocument, newDocumentMetadata, expectedValidationResults)
+        val expectedReport = (previousDocument - "_version", newDocumentMetadata, expectedValidationResults)
 
         reports is Seq(expectedReport)
       }
@@ -131,19 +132,24 @@ object _05_Evolution extends Specification with Example {
         }
 
       def createPreviousDocument(document: JsObject) = {
-        Await.result(testStore(Create("article", "article1", document)), 1.second)
+        Await.result(testStore(Save("article", "article1", document)), 1.second)
         document
       }
 
       example {
         val previousDocument = createPreviousDocument(
-          obj("header" -> "article1", "id" -> "article1"))
+          obj("header" -> "article1", "id" -> "article1", "_version" -> 0))
 
         val newDocumentMetadata = Document(id = "article", idField = "title")(
           "title" -> Label
         ) withEvolutions (
-            1 -> (__.json update (__ \ "title").json.copyFrom((__ \ "header").json.pick) andThen (__ \ "header").json.prune)
-        )
+            1 -> { document =>
+              val header = (document \ "header").as[JsValue]
+              val title = obj("title" -> header)
+              val documentWithTitle = document ++ title
+              documentWithTitle - "header"
+            }
+          )
 
         Helpers.running(testApplication) {
           new Cms(pathPrefix, authenticate,

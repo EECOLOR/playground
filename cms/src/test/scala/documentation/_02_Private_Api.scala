@@ -207,6 +207,8 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "title" -> "Article 2"
         )
       }
+         
+         "deleting" - {}
     }
   }
 }

@@ -353,6 +353,11 @@ object DocumentSpec extends Specification {
     //Documents(Seq(Document("a")(), Document("a")())) must beIllegal
   }
 
+  "There should a store spec" - {
+    "saveIdReference should be local for the metaId" - {}
+    "when deleting, also delete any references" - {}
+  }
+  
   val beIllegal = throwAn[IllegalArgumentException]
 
   implicit def anyToJsValue[T](t: T)(implicit toJson: Writes[T]): JsValue =

@@ -9,24 +9,29 @@ import play.api.libs.json.JsString
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.construction.Store
 import org.qirx.cms.construction.Get
-import org.qirx.cms.construction.Create
-import org.qirx.cms.construction.Update
+import org.qirx.cms.construction.Save
+import org.qirx.cms.construction.SaveIdReference
 import org.qirx.cms.construction.List
+import org.qirx.cms.construction.Delete
 
 class TestStore extends (Store ~> Future) {
 
-  val storage = mutable.Map.empty[String, ListBuffer[JsObject]]
+  val storage = mutable.Map.empty[String, mutable.Map[String, JsObject]]
 
   val idMappings = mutable.Map.empty[String, String]
 
+  def storeFor(metaId:String) = storage.getOrElseUpdate(metaId, mutable.Map.empty)
+  
   def transform[x] = {
     case Get(metaId, id, fieldSet) =>
-      val store = storage.getOrElseUpdate(metaId, mutable.ListBuffer.empty)
+      println(id)
+      println(idMappings)
+      val store = storeFor(metaId)
       def getId(id: String): String =
         idMappings.get(id).map(getId).getOrElse(id)
 
       val actualId = getId(id)
-      val obj = store.find(obj => (obj \ "id").as[String] == actualId)
+      val obj = store.get(actualId)
       val filteredObj =
         if (fieldSet.isEmpty) obj
         else obj.map { obj =>
@@ -38,12 +43,24 @@ class TestStore extends (Store ~> Future) {
         }
       Future.successful(filteredObj)
 
-    case Create(metaId, id, json) =>
-      val store = storage.getOrElseUpdate(metaId, mutable.ListBuffer.empty)
-      store += json ++ obj("id" -> id)
+    case Save(metaId, id, json) =>
+      val store = storeFor(metaId)
+      store += (id -> json)
 
       Future.successful(())
 
+    case SaveIdReference(metaId, id, newId) =>
+      println("SaveIdReference", id, newId)
+      newId.foreach(newId => idMappings += (id -> newId))
+      
+      Future.successful(())
+      
+    case Delete(metaId, id) =>
+      val store = storeFor(metaId)
+      store -= id
+      
+      Future.successful(())
+      /*
     case Update(metaId, id, oldObj, newObj, fieldSet) =>
       val store = storage.getOrElseUpdate(metaId, mutable.ListBuffer.empty)
 
@@ -51,7 +68,7 @@ class TestStore extends (Store ~> Future) {
       val oldId = (oldObj \ "id").as[String]
       val newId = (newObj \ "id").asOpt[String]
 
-      newId.foreach(idMappings.update(oldId, _))
+      newId.foreach(newId => idMappings += (oldId -> newId))
 
       val actualId = newId.getOrElse(oldId)
 
@@ -66,9 +83,10 @@ class TestStore extends (Store ~> Future) {
       store.update(index, filteredObj)
 
       Future.successful(())
-
+*/
     case List(metaId, fields) =>
-      val documents = storage.getOrElseUpdate(metaId, mutable.ListBuffer.empty)
+      val store = storeFor(metaId)
+      val documents = store.values
       val documentsWithFields =
         if (fields.isEmpty) documents
         else
@@ -77,6 +95,6 @@ class TestStore extends (Store ~> Future) {
               case (key, _) => fields.contains(key)
             })
           }
-      Future.successful(documentsWithFields)
+      Future.successful(documentsWithFields.toSeq)
   }
 }
