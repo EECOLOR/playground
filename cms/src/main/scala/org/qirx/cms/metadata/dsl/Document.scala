@@ -6,6 +6,7 @@ import play.api.libs.json.JsObject
 import org.qirx.cms.metadata.DocumentIdGenerator
 import java.text.Normalizer
 import org.qirx.cms.metadata.Evolution
+import org.qirx.cms.metadata.Evolutions
 
 object Document {
   def apply(id: String, idField: String)(properties: (String, PropertyMetadata)*): DocumentMetadata =
@@ -15,7 +16,7 @@ object Document {
     id: String,
     idField: String,
     properties: Map[String, PropertyMetadata],
-    evolutions: Seq[Evolution] = Seq.empty) extends DocumentMetadata {
+    evolutions: Evolutions = new Evolutions(Seq.empty)) extends DocumentMetadata {
 
     val idGenerator =
       new DocumentIdGenerator {
@@ -34,6 +35,6 @@ object Document {
       }
 
     def withEvolutions(evolutions: Evolution*) =
-      copy(evolutions = this.evolutions ++ evolutions)
+      copy(evolutions = this.evolutions.withEvolutions(evolutions))
   }
 }

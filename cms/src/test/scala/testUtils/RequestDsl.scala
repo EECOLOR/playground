@@ -18,19 +18,23 @@ trait RouteRequest {
       val result = Helpers.route(app, request).get
 
       implicit val timeout = Timeout(2.seconds)
-      
+
       val content = Helpers.contentAsString(result)
       val json = Option(content).filter(_.nonEmpty).map(Json.parse)
-      
+
       (Helpers.status(result), json.orNull)
     }
 }
 
-abstract class WithBodyToApplication(method: String, val app: Application, pathPrefix: String) extends RouteRequest {
+abstract class WithBodyToApplication(
+  method: String,
+  val app: Application,
+  pathPrefix: String) extends RouteRequest {
+  
   class WithTo[T: Writeable](body: T, header: Option[(String, String)] = None) {
 
     val at = to _
-    
+
     def to(path: String) = {
       val request = FakeRequest(method, pathPrefix + path)
         .withHeaders(header.toSeq: _*)

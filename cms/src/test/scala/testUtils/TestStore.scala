@@ -24,8 +24,6 @@ class TestStore extends (Store ~> Future) {
   
   def transform[x] = {
     case Get(metaId, id, fieldSet) =>
-      println(id)
-      println(idMappings)
       val store = storeFor(metaId)
       def getId(id: String): String =
         idMappings.get(id).map(getId).getOrElse(id)
@@ -50,7 +48,6 @@ class TestStore extends (Store ~> Future) {
       Future.successful(())
 
     case SaveIdReference(metaId, id, newId) =>
-      println("SaveIdReference", id, newId)
       newId.foreach(newId => idMappings += (id -> newId))
       
       Future.successful(())
@@ -60,30 +57,7 @@ class TestStore extends (Store ~> Future) {
       store -= id
       
       Future.successful(())
-      /*
-    case Update(metaId, id, oldObj, newObj, fieldSet) =>
-      val store = storage.getOrElseUpdate(metaId, mutable.ListBuffer.empty)
 
-      val index = store.indexOf(oldObj)
-      val oldId = (oldObj \ "id").as[String]
-      val newId = (newObj \ "id").asOpt[String]
-
-      newId.foreach(newId => idMappings += (oldId -> newId))
-
-      val actualId = newId.getOrElse(oldId)
-
-      val filteredObj =
-        if (fieldSet.isEmpty) newObj + ("id" -> JsString(actualId))
-        else {
-          val filteredFields = newObj.fields.filter {
-            case (key, _) => fieldSet contains key
-          }
-          oldObj ++ JsObject(filteredFields)
-        }
-      store.update(index, filteredObj)
-
-      Future.successful(())
-*/
     case List(metaId, fields) =>
       val store = storeFor(metaId)
       val documents = store.values

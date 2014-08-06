@@ -197,6 +197,8 @@ object DocumentSpec extends Specification {
 
   "automatic versioning by comparing document metadata" - {}
 
+  "report exceptions correctly" - {}
+  
   "Documents" - {
 
     case object Age extends Range("age", Number)
