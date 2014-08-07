@@ -9,9 +9,8 @@ import play.api.libs.json.Json.obj
 import play.api.mvc.AnyContent
 import play.api.mvc.Request
 import play.api.mvc.Result
-import play.api.mvc.Results
 
-object MetadataApi extends Api with Results with Status {
+object MetadataApi extends Api with play.api.mvc.Results with Status {
   def handleRequest(remainingPath: Seq[String], request: Request[AnyContent]): Future[Result] =
     Future.successful {
       Ok(

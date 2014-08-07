@@ -16,7 +16,9 @@ package object machinery {
       implicit lift: F ~> O): Program[O, A] = Free(lift(fa))
   }
 
-  trait ProgramType[T[_]]
+  trait ProgramType[T[_]] {
+    type Result[x] = T[x]
+  }
 
   object ProgramType {
     implicit def anyType[T[_]]: ProgramType[T] = null

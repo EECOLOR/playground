@@ -199,6 +199,10 @@ object DocumentSpec extends Specification {
 
   "report exceptions correctly" - {}
   
+  "cross origin headers" - {}
+  
+  "test methodNotAllowed" - {}
+  
   "Documents" - {
 
     case object Age extends Range("age", Number)

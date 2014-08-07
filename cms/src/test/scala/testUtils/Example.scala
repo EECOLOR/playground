@@ -6,6 +6,8 @@ import org.qirx.littlespec.io.Source
 import org.qirx.littlespec.fragments.Title
 import org.qirx.littlespec.fragments.Text
 import org.qirx.littlespec.fragments.Fragment
+import scala.reflect.ClassTag
+import org.qirx.littlespec.reporter.MarkdownReporter
 
 trait Example { self: Specification =>
 
@@ -42,4 +44,19 @@ trait Example { self: Specification =>
     def withSpecification(body: this.type => FragmentBody) =
       createFragment(Source.codeAtLocation(location), body(this))
   }
+  
+  def link[T : ClassTag] = {
+    val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
+
+    val name = MarkdownReporter.name(fullyQualifiedName)
+    val fileName = MarkdownReporter.fileName(fullyQualifiedName)
+
+    val cleanFileName = fileName.replaceAll("\\$", "")
+    val cleanName = name.replaceAll("_", " ").replaceAll("\\$", "").trim
+
+    s"[$cleanName]($cleanFileName)"
+  }
+
+  def moreInformation[T : ClassTag] =
+    s"For detailed information see ${link[T]}"
 }

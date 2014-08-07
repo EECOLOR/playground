@@ -6,7 +6,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
 trait ExecutionTools {
-  implicit val executionContext: ExecutionContext
+  implicit val ec: ExecutionContext
 
   type FutureSeq[T] = Future[Seq[T]]
   implicit def monad = new Free.Monad[FutureSeq] {

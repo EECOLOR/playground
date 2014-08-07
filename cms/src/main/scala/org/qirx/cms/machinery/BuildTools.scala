@@ -14,7 +14,7 @@ trait BuildTools extends BranchEnhancements with Coproduct.Transformations {
   type Base = TypeSet {
     type T[x] = System[x]
   }
-  
+
   type +[Types <: TypeSet, Type[_]] = TypeSet {
     type T[x] = Co[Type, Types#T]#Product[x]
   }
@@ -23,4 +23,12 @@ trait BuildTools extends BranchEnhancements with Coproduct.Transformations {
     implicit p: ProgramType[O],
     lift: F ~> O): Program[O, A] = Program(fa)
 
+  implicit class ProgramEnhancements[F[_], A, O[_]](s: F[A]) {
+    def asProgram(
+      implicit p: ProgramType[O],
+      lift: F ~> O): Program[O, A] = toProgram(s)
+  }
+
 }
+
+object BuildTools extends BuildTools

@@ -22,7 +22,8 @@ import play.api.libs.json.JsObject
 class DocumentValidator(
   documents: Seq[DocumentMetadata],
   metadata: Metadata ~> Id,
-  store: Store ~> Future)(implicit val executionContext: ExecutionContext) extends BuildTools with ExecutionTools {
+  store: Store ~> Future)(implicit val ec: ExecutionContext) 
+  extends BuildTools with ExecutionTools {
 
   type Document = JsObject
   type ValidationResult = Seq[JsObject]
@@ -31,10 +32,6 @@ class DocumentValidator(
   def validate():Future[Seq[Result]] = validationProgram.foldMap(runner)
   
   private type Elements = ProgramType[(Base + Store + Metadata + Seq)#T]
-
-  private implicit class SeqEnhancements[T](s: Seq[T]) {
-    def asProgram(implicit e: Elements) = toProgram(s)
-  }
 
   private def validationProgram(implicit e: Elements) =
     for {

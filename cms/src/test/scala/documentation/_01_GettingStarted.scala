@@ -123,7 +123,7 @@ object _01_GettingStarted extends Specification with Example {
               |$expectedResult          
               |```""".stripMargin - {
 
-            val article = obj("label" -> "Article 1")
+            val article = obj("title" -> "Article 1")
 
             val (status, body) = POST(article) to "/api/private/article"
 
@@ -135,7 +135,7 @@ object _01_GettingStarted extends Specification with Example {
       }
       "## The public API" - {
 
-        s"""|${moreInformation[_03_PublicApi]}
+        s"""|${moreInformation[_03_Public_Api]}
             |
             |This part of the API allows you to search and retrieve content, 
             |it does not require authentication.""".stripMargin - {
@@ -146,7 +146,7 @@ object _01_GettingStarted extends Specification with Example {
             body is arr(
               obj(
                 "id" -> "article_1",
-                "label" -> "Article 1"
+                "title" -> "Article 1"
               )
             )
           }
@@ -200,19 +200,4 @@ object _01_GettingStarted extends Specification with Example {
 
       }
     }
-
-  def link[T : ClassTag] = {
-    val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
-
-    val name = MarkdownReporter.name(fullyQualifiedName)
-    val fileName = MarkdownReporter.fileName(fullyQualifiedName)
-
-    val cleanFileName = fileName.replaceAll("\\$", "")
-    val cleanName = name.replaceAll("_", " ").replaceAll("\\$", "").trim
-
-    s"[$cleanName]($cleanFileName)"
-  }
-
-  def moreInformation[T : ClassTag] =
-    s"For detailed information see ${link[T]}"
 }

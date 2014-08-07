@@ -7,5 +7,5 @@ import play.api.mvc.Result
 import scala.concurrent.ExecutionContext
 
 trait Api {
-  def handleRequest(remainingPath: Seq[String], request: Request[AnyContent]): Future[Result]
+  def handleRequest(remainingPathSegments: Seq[String], request: Request[AnyContent]): Future[Result]
 }

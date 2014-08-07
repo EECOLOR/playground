@@ -45,23 +45,24 @@ class Cms(
 
   private val handleRequest = Action.async { request =>
 
-    val pathParts = extractPathParts(request.path)
-    val api = determineApiFor(pathParts.head)
+    val pathSegments = extractPathSegments(request.path)
+    val api = determineApiFor(pathSegments.head)
 
-    api.handleRequest(pathParts.tail, request)
+    api.handleRequest(pathSegments.tail, request)
   }
 
-  private def extractPathParts(path: String): Seq[String] =
+  private def extractPathSegments(path: String): Seq[String] =
     path
       .replaceFirst(pathPrefix, "")
       .split("/")
       .filter(_.nonEmpty)
 
   private lazy val privateApi = new PrivateApi(store, metadata, authentication)
+  private lazy val publicApi = new PublicApi(store, metadata)
 
   private val determineApiFor: String => Api = {
     case "private" => privateApi
-    case "public" => PublicApi
+    case "public" => publicApi
     case "metadata" => MetadataApi
     case _ => NoApi
   }
@@ -69,6 +70,10 @@ class Cms(
   private def validateExistingDocuments() = {
     val validator = new DocumentValidator(documents, metadata, store)
 
+    /*
+     * Using await here because we want the documents to be validated 
+     * before the CMS is started
+     */
     val result = Await.result(validator.validate(), 60.seconds)
 
     result.foreach {

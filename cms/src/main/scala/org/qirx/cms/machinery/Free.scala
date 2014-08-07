@@ -4,6 +4,8 @@ import scala.language.higherKinds
 
 trait Free[F[_], A] {
 
+  type Result[x] = F[x]
+  
   def flatMap[B](f: A => Free[F, B]): Free[F, B] =
     this match {
       case Apply(a) => f(a)
