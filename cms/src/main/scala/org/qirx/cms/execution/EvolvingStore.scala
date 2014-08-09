@@ -37,6 +37,9 @@ class EvolvingStore(
       val version = obj(VERSION -> latestVersionFor(metaId))
       store(Save(metaId, id, document ++ version))
 
+    case exists:Exists =>
+      store(exists)
+      
     case saveIdReference: SaveIdReference =>
       store(saveIdReference)
 

@@ -38,6 +38,12 @@ class TestStore extends (Store ~> Future) {
         }
       Future.successful(filteredObj)
 
+    case Exists(metaId, id) =>
+      val store = storeFor(metaId)
+      val exists = store.contains(id)
+      
+      Future.successful(exists)
+      
     case Save(metaId, id, json) =>
       val store = storeFor(metaId)
       store += (id -> json)
@@ -45,7 +51,7 @@ class TestStore extends (Store ~> Future) {
       Future.successful(())
 
     case SaveIdReference(metaId, id, newId) =>
-      newId.foreach(newId => idMappings += (id -> newId))
+      idMappings += (id -> newId)
       
       Future.successful(())
       

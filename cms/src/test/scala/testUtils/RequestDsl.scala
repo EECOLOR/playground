@@ -30,7 +30,7 @@ abstract class WithBodyToApplication(
   method: String,
   val application: Application,
   pathPrefix: String) extends RouteRequest {
-  
+
   class WithTo[T: Writeable](body: T, header: Option[(String, String)] = None) {
 
     val at = to _
@@ -50,11 +50,31 @@ abstract class WithBodyToApplication(
     }
 }
 
+abstract class ToApplicationWithBody(
+  method: String,
+  val application: Application,
+  pathPrefix: String) extends RouteRequest {
+
+  class WithUsing(path: String) {
+    def using[T: Writeable](body: T) = {
+      val request = FakeRequest(method, pathPrefix + path)
+        .withBody(body)
+
+      routeRequest(request)
+    }
+  }
+
+  def apply(path: String) = new WithUsing(path)
+}
+
 class PostToApplication(app: Application, pathPrefix: String = "")
   extends WithBodyToApplication("POST", app, pathPrefix)
 
 class PutToApplication(app: Application, pathPrefix: String = "")
   extends WithBodyToApplication("PUT", app, pathPrefix)
+
+class PatchToApplication(app: Application, pathPrefix: String = "")
+  extends ToApplicationWithBody("PATCH", app, pathPrefix)
 
 class GetFromApplication(val application: Application, pathPrefix: String = "") extends RouteRequest {
 

@@ -10,17 +10,20 @@ import testUtils.RouteRequest
 import play.api.test.Helpers
 import play.api.test.FakeRequest
 import testUtils.PutToApplication
+import testUtils.cmsName
+import testUtils.PatchToApplication
 
 class _03_Public_Api extends Specification with ApiExampleSpecification {
   "# The public API" - {
 
     val publicApiPrefix = "/api/public"
+        val privateApiPrefix = "/api/private"
 
     withApiExampleIntroduction(apiPrefix = publicApiPrefix) { app =>
 
-      val POST = new PostToApplication(app, "/api/private")
-      val PUT = new PutToApplication(app, "/api/private")
+      val POST = new PostToApplication(app, privateApiPrefix)
       val GET = new GetFromApplication(app, publicApiPrefix)
+      val PATCH = new PatchToApplication(app, privateApiPrefix)
 
       """|This API provides the same GET endpoints that are available in the 
          |private API without authentication.
@@ -109,7 +112,7 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
 
       "If a document is updated, this change is reflected in the index as well" - example {
         val updateTitle = obj("title" -> "Article 2")
-        PUT(updateTitle) to "/article/article_1?fields=title"
+        PATCH("/article/article_1") using updateTitle 
 
         val (status, body) = GET from "/article/article_1?fields=id,title"
         status is 200
@@ -121,8 +124,8 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
 
       "If a documents id is updated, it's can be retrieved by it's new id." -
         example {
-          val updateId = obj("id" -> "article_2")
-          PUT(updateId) to "/article/article_1?fields=id"
+          val newId = obj("id" -> "article_2")
+          PATCH("/article/article_1") using newId 
 
           val (status, body) = GET from "/article/article_2?fields=id,title"
           status is 200
@@ -152,7 +155,7 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
       """|Because of the public nature of the index, confidential properties 
          |are not returned.""".stripMargin - example {
         val addSecret = obj("secret" -> "A secret about Article 2")
-        PUT(addSecret) to "/article/article_2?fields=secret"
+        PATCH("/article/article_2") using addSecret 
 
         val (status, body) = GET from "/article/article_2"
         status is 200
@@ -173,15 +176,22 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
             "tags" -> arr("tag1", "tag2")
           )
         )
-
-        pending("add check for confidential properties when searching")
       }
 
       "deleting" - {}
 
-      """|##Search
-         |
-         |The public API has one special endpoint""".stripMargin - {}
+      s"""|##Search
+          |
+          |The public API has one special endpoint called `search`. This endpoint 
+          |is special in the sense that it is not handled by the `$cmsName` itself, 
+          |but by the index. This allows you to implement an index that fits your 
+          |needs.""".stripMargin - example {
+        val (status, body) = GET from "/search/testPath"
+        status is 200
+        body is obj(
+          "info" -> "Response from test index to search at `testPath`"
+        )
+      }
     }
   }
 }

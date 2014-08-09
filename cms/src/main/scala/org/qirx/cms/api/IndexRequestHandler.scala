@@ -42,14 +42,12 @@ class IndexRequestHandler[O[_]](meta: DocumentMetadata,
       _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
       actualId <- Store.GetActualId(meta.id, id)
       document <- Get(meta.id, actualId, fieldSet) ifNone Return(notFound)
-      publicDocument <- RemoveConfidentialProperties(meta, document)
-      result <- DocumentResult(publicDocument)
+      result <- DocumentResult(document)
     } yield result
 
   private def list(fieldSet: Set[String]) =
     for {
       documents <- List(meta.id, fieldSet)
-      publicDocuments <- RemoveConfidentialProperties(meta, documents)
-      result <- DocumentsResult(publicDocuments)
+      result <- DocumentsResult(documents)
     } yield result
 }

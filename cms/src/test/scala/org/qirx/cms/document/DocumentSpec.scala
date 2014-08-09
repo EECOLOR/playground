@@ -373,6 +373,9 @@ object DocumentSpec extends Specification {
     "when deleting, also delete any references" - {}
   }
   
+  "reporting API activity" - {}
+  "protecting against illegal use of API" - {}
+  
   val beIllegal = throwAn[IllegalArgumentException]
 
   implicit def anyToJsValue[T](t: T)(implicit toJson: Writes[T]): JsValue =

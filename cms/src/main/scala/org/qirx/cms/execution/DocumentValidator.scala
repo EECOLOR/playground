@@ -39,7 +39,7 @@ class DocumentValidator(
       messages <- GetMessages(meta)
       documents <- List(meta.id, Set.empty)
       document <- documents.asProgram
-      result <- Validate(meta, document, Set.empty, messages)
+      result <- Validate(meta, document, messages)
     } yield (document, meta, result)
 
   private val runner = {

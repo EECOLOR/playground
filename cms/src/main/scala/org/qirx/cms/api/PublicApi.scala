@@ -22,6 +22,7 @@ import org.qirx.cms.construction.Branch
 import org.qirx.cms.construction.Return
 import org.qirx.cms.machinery.Free
 import org.qirx.cms.construction.Index
+import org.qirx.cms.construction.Index._
 
 class PublicApi(
   index: Index ~> Future,
@@ -47,7 +48,7 @@ class PublicApi(
       _ <- Return(validRequestMethod(request.method)) ifNone Return(methodNotAllowed)
       (segment, rest) <- GetNextSegment(pathSegments) ifNone Return(notFound)
       result <- segment match {
-        //case "search" => searchRequest(request, rest)
+        case "search" => searchRequest(request, rest)
         case id => documentRequest(request, id, rest)
       }
     } yield result
@@ -65,7 +66,9 @@ class PublicApi(
     } yield result
 
   private def searchRequest(request: Request[AnyContent], remainingPathSegments: Seq[String])(implicit e: Elements) =
-    ???
+    for {
+      searchResult <- Search(request, remainingPathSegments)
+    } yield searchResult
 
   private lazy val runner = {
     val branchRunner = BranchToFuture

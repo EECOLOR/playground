@@ -15,19 +15,12 @@ case class ToJsObject(value: JsValue) extends DirectAction[Option[JsObject]] {
   val result = value.asOpt[JsObject]
 }
 
-case class Merge(oldDocument: JsObject, newDocument: JsObject, fieldSet: Set[String]) extends DirectAction[JsObject] {
-  val result =
-    if (fieldSet.isEmpty) newDocument
-    else {
-      val filteredFields = newDocument.fields.filter {
-        case (key, _) => fieldSet contains key
-      }
-      oldDocument ++ JsObject(filteredFields)
-    }
+case class Merge(oldDocument: JsObject, newDocument: JsObject) extends DirectAction[JsObject] {
+  val result = oldDocument ++ newDocument
 }
 
-case class ExtractId(document: JsObject) extends DirectAction[Option[String]] {
-  val result = (document \ "id").asOpt[String]
+case class ExtractId(document: JsObject) extends DirectAction[String] {
+  val result = (document \ "id").as[String]
 }
 
 case class AddId(document: JsObject, id: String) extends DirectAction[JsObject] {

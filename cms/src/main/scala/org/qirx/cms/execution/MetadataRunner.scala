@@ -22,23 +22,18 @@ class MetadataRunner(documents: Seq[DocumentMetadata]) extends (Metadata ~> Id) 
     case GetDocumentMetadata(documentId) =>
       documentMap get documentId
 
-    case Validate(meta, document, fieldSet, messages) =>
+    case Validate(meta, document, messages) =>
       meta.properties.flatMap {
-        case (name, property) if fieldSet.isEmpty || (fieldSet contains name) =>
-
+        case (name, property) =>
           val value = (document \ name).asOpt[JsValue]
           val validationResult = property.validate(messages withPrefix name, value)
           validationResult.map { _ + ("name" -> JsString(name)) }
-
-        case _ => None
       }.toSeq
 
-    case removeConfidentialProperties @ RemoveConfidentialProperties(meta, value) =>
+    case RemoveConfidentialProperties(meta, document) =>
       def removeFromDocument(document: JsObject, name: String) = document - name
 
-      removeConfidentialProperties.converter(value) { document =>
-        confidentialPropertyNamesFrom(meta).foldLeft(document)(removeFromDocument)
-      }
+      confidentialPropertyNamesFrom(meta).foldLeft(document)(removeFromDocument)
 
     case GetMessages(meta) =>
       Messages.withPrefix(meta.id)

@@ -9,6 +9,7 @@ import org.qirx.cms.construction.Store.Delete
 import org.qirx.cms.construction.Store.Get
 import org.qirx.cms.construction.Store.List
 import org.qirx.cms.construction.Store.Save
+import org.qirx.cms.construction.Store.Exists
 import org.qirx.cms.construction.Store.SaveIdReference
 import org.qirx.cms.construction.System
 import org.qirx.cms.construction.Validate
@@ -23,11 +24,9 @@ import org.qirx.cms.construction.api.Merge
 import org.qirx.cms.construction.api.ToJsObject
 import org.qirx.cms.construction.api.ToJsValue
 import org.qirx.cms.construction.api.ValitationResultsToResult
-import org.qirx.cms.machinery.BuildTools.IterableContinuation
-import org.qirx.cms.machinery.BuildTools.OptionContinuation
-import org.qirx.cms.machinery.BuildTools.toProgram
+import org.qirx.cms.machinery.BuildTools._
 import org.qirx.cms.machinery.ProgramType
-import org.qirx.cms.machinery.{~> => ~>}
+import org.qirx.cms.machinery.{ ~> => ~> }
 import org.qirx.cms.metadata.DocumentMetadata
 import play.api.libs.json.JsObject
 import play.api.mvc.AnyContent
@@ -35,6 +34,8 @@ import play.api.mvc.Request
 import org.qirx.cms.construction.Branch
 import play.api.mvc.Result
 import org.qirx.cms.construction.Index
+import org.qirx.cms.construction.RemoveConfidentialProperties
+import org.qirx.cms.machinery.Free
 
 /**
  * The implicit parameters are used to make sure we have the correct
@@ -79,8 +80,7 @@ class DocumentRequestHandler[O[_]](
       json <- ToJsValue(request) ifNone Return(badRequest)
       document <- ToJsObject(json) ifNone Return(jsonExpected)
       messages <- GetMessages(meta)
-      results <- Validate(meta, document, Set.empty, messages) ifEmpty
-        create(document)
+      results <- Validate(meta, document, messages) ifEmpty create(document)
       result <- ValitationResultsToResult(results)
     } yield result
 
@@ -89,7 +89,7 @@ class DocumentRequestHandler[O[_]](
     for {
       documentWithId <- AddId(document, id)
       _ <- Save(meta.id, id, documentWithId)
-      _ <- Index.Put(meta.id, id, documentWithId)
+      _ <- putInIndex(id, documentWithId)
       result <- DocumentCreatedResult(id)
     } yield result
   }
@@ -97,28 +97,51 @@ class DocumentRequestHandler[O[_]](
   def put =
     for {
       json <- ToJsValue(request) ifNone Return(badRequest)
+      document <- ToJsObject(json) ifNone Return(jsonExpected)
+      messages <- GetMessages(meta)
+      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
+      documentWithId <- AddId(document, id)
+      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+      _ <- Exists(meta.id, id) ifFalse Return(notFound)
+      results <- Validate(meta, documentWithId, messages) ifEmpty update(id, documentWithId)
+      result <- ValitationResultsToResult(results)
+    } yield result
+
+  def patch =
+    for {
+      json <- ToJsValue(request) ifNone Return(badRequest)
       newDocument <- ToJsObject(json) ifNone Return(jsonExpected)
       messages <- GetMessages(meta)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
       _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
       oldDocument <- Get(meta.id, id, Set.empty) ifNone Return(notFound)
-      fieldSet <- GetFieldSetFromQueryString(request.queryString)
-      results <- Validate(meta, newDocument, fieldSet, messages) ifEmpty
-        update(id, oldDocument, newDocument, fieldSet)
+      merged <- Merge(oldDocument, newDocument)
+      results <- Validate(meta, merged, messages) ifEmpty update(id, merged)
       result <- ValitationResultsToResult(results)
     } yield result
 
-  private def update(id: String, oldDocument: JsObject, newDocument: JsObject, fieldSet: Set[String]) =
+  private def update(id: String, document: JsObject) =
     for {
-      merged <- Merge(oldDocument, newDocument, fieldSet)
-      newId <- ExtractId(newDocument)
-      actualId = newId.getOrElse(id)
-      documentWithId <- AddId(merged, actualId)
-      _ <- SaveIdReference(meta.id, id, newId)
-      _ <- Delete(meta.id, id)
-      _ <- Save(meta.id, actualId, documentWithId)
-      _ <- Index.Delete(meta.id, id)
-      _ <- Index.Put(meta.id, actualId, documentWithId)
+      newId <- ExtractId(document)
+      _ <- if (newId == id)
+        for {
+          _ <- Save(meta.id, id, document)
+          _ <- putInIndex(id, document)
+        } yield ()
+      else
+        for {
+          _ <- SaveIdReference(meta.id, id, newId)
+          _ <- Save(meta.id, newId, document)
+          _ <- putInIndex(newId, document)
+          _ <- Delete(meta.id, id)
+          _ <- Index.Delete(meta.id, id)
+        } yield ()
     } yield noContent
+
+  private def putInIndex(id: String, document: JsObject) =
+    for {
+      publicDocument <- RemoveConfidentialProperties(meta, document)
+      _ <- Index.Put(meta.id, id, publicDocument)
+    } yield ()
 
 }

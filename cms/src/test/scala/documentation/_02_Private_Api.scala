@@ -25,6 +25,7 @@ import testUtils.GetFromApplication
 import testUtils.PutToApplication
 import testUtils.RouteRequest
 import play.api.test.FakeRequest
+import testUtils.PatchToApplication
 
 class _02_Private_Api extends Specification with ApiExampleSpecification {
 
@@ -37,6 +38,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       val POST = new PostToApplication(app, privateApiPrefix)
       val GET = new GetFromApplication(app, privateApiPrefix)
       val PUT = new PutToApplication(app, privateApiPrefix)
+      val PATCH = new PatchToApplication(app, privateApiPrefix)
 
       """|Note that this API only supports a few request methods, it will return 
          |a failure for any non-suported method""".stripMargin - {
@@ -47,7 +49,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         import helper._
         import Helpers._
         example {
-          val methods = Seq("HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT", "PATCH")
+          val methods = Seq("HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT")
           methods.foreach { method =>
             val (status, body) = routeRequest(FakeRequest(method, "/api/private"))
             body is obj(
@@ -192,13 +194,17 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      "We could however select a few fields to be updated" - example {
-        val article = obj(
+      "We could however partially update the article" - example {
+        val withTags = obj(
           "tags" -> arr("tag1", "tag3")
         )
 
-        PUT(article) at "/article/article_3?fields=tags"
+        val (status, body) = PATCH("/article/article_3") using withTags 
+        status is 204
+        body is null
+      }
 
+      "As you can see the result is tags being added" - example {
         val (status, body) = GET from "/article/article_3"
         status is 200
         body is obj(
@@ -206,12 +212,13 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "title" -> "Article 2",
           "tags" -> arr("tag1", "tag3")
         )
+
       }
 
       "It's also possible to update the id." - example {
-        val article = obj("id" -> "article_2")
+        val newId = obj("id" -> "article_2")
 
-        PUT(article) at "/article/article_3?fields=id"
+        PATCH("/article/article_3") using newId 
 
         val (status, body) = GET from "/article/article_2?fields=id,title"
         status is 200
@@ -238,7 +245,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       }
 
       "deleting" - {}
-      
+
       "generated fields" - {}
     }
   }
