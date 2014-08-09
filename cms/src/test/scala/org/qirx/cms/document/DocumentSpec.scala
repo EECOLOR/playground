@@ -203,6 +203,15 @@ object DocumentSpec extends Specification {
   
   "test methodNotAllowed" - {}
   
+  "we use PATCH instead of PUT for partial updates" - {}
+  
+  "in the store do not delete and save the element, but atomically update the id" - {}
+  
+  "id stuff" - {
+    "create a safe method to reserve id's" - {}
+    "make sure id references are per meta.id" - {}
+  }
+  
   "Documents" - {
 
     case object Age extends Range("age", Number)

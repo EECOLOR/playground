@@ -23,6 +23,8 @@ import play.api.libs.json.Reads
 import testUtils.ApiExampleSpecification
 import testUtils.GetFromApplication
 import testUtils.PutToApplication
+import testUtils.RouteRequest
+import play.api.test.FakeRequest
 
 class _02_Private_Api extends Specification with ApiExampleSpecification {
 
@@ -36,7 +38,29 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       val GET = new GetFromApplication(app, privateApiPrefix)
       val PUT = new PutToApplication(app, privateApiPrefix)
 
-      "The first call we make to the api returns no elements" - example {
+      """|Note that this API only supports a few request methods, it will return 
+         |a failure for any non-suported method""".stripMargin - {
+        val helper =
+          new RouteRequest {
+            val application = app
+          }
+        import helper._
+        import Helpers._
+        example {
+          val methods = Seq("HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT", "PATCH")
+          methods.foreach { method =>
+            val (status, body) = routeRequest(FakeRequest(method, "/api/private"))
+            body is obj(
+              "status" -> 405,
+              "error" -> "methodNotAllowed"
+            )
+            status is 405
+          }
+          success
+        }
+      }
+
+      "The first call we make to the api returns no documents" - example {
         val (status, body) = GET from "/article"
         status is 200
         body is arr()
@@ -45,6 +69,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       "So we need to create a new instance" - example {
         val article = obj(
           "title" -> "Article 1",
+          "secret" -> "Secret information about Article 1",
           "body" -> arr(
             obj(
               "element" -> "p",
@@ -84,6 +109,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           obj(
             "id" -> "article_1",
             "title" -> "Article 1",
+            "secret" -> "Secret information about Article 1",
             "body" -> arr(
               obj(
                 "element" -> "p",
@@ -109,7 +135,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      s"""|In the scenario's where you want to list articles, you don't
+      s"""|There are scenario's where you want to list articles, but you don't
           |want to retrieve all fields.""".stripMargin - example {
         val (status, body) = GET from "/article?fields=id,title"
 
@@ -183,9 +209,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       }
 
       "It's also possible to update the id." - example {
-        val article = obj(
-          "id" -> "article_2"
-        )
+        val article = obj("id" -> "article_2")
 
         PUT(article) at "/article/article_3?fields=id"
 
@@ -207,8 +231,15 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "title" -> "Article 2"
         )
       }
-         
-         "deleting" - {}
+
+      "Note that the document with the old id has been removed" - {
+        val (_, body) = GET from "/article?fields=id"
+        body is arr(obj("id" -> "article_1"), obj("id" -> "article_2"))
+      }
+
+      "deleting" - {}
+      
+      "generated fields" - {}
     }
   }
 }

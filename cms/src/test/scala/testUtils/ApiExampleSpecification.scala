@@ -10,6 +10,7 @@ import scala.concurrent.Future
 import org.qirx.cms.metadata.dsl.Document
 import scala.io.Source
 import play.api.test.FakeApplication
+import org.qirx.cms.metadata.dsl.Confidential
 
 trait ApiExampleSpecification extends Example { self: Specification =>
 
@@ -25,6 +26,7 @@ trait ApiExampleSpecification extends Example { self: Specification =>
         documents = Seq(
           Document(id = "article", idField = "title")(
             "title" -> Label,
+            "secret" -> Confidential(Label.?),
             "body" -> RichContent.?,
             "tags" -> Tag.*,
             "date" -> Date.generated

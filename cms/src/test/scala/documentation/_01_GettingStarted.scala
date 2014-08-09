@@ -54,6 +54,7 @@ object _01_GettingStarted extends Specification with Example {
         documents = Seq(
           Document(id = "article", idField = "title")(
             "title" -> Label,
+            "secret" -> Confidential(Label.?),
             "body" -> RichContent.?,
             "tags" -> Tag.*,
             "date" -> Date.generated
@@ -170,6 +171,10 @@ object _01_GettingStarted extends Specification with Example {
                   obj(
                     "id" -> "label",
                     "name" -> "title"
+                  ),
+                  obj(
+                    "id" -> "label",
+                    "name" -> "secret"
                   ),
                   obj(
                     "id" -> "rich_content",

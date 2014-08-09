@@ -34,6 +34,7 @@ class Cms(
     val evolutions = documents.map(meta => meta.id -> meta.evolutions).toMap
     new EvolvingStore(environment.store, evolutions)
   }
+  private val index = environment.index
   private val metadata = new MetadataRunner(documents)
   private val authentication = new AuthenticationRunner(authenticate)
 
@@ -57,8 +58,8 @@ class Cms(
       .split("/")
       .filter(_.nonEmpty)
 
-  private lazy val privateApi = new PrivateApi(store, metadata, authentication)
-  private lazy val publicApi = new PublicApi(store, metadata)
+  private lazy val privateApi = new PrivateApi(store, index, metadata, authentication)
+  private lazy val publicApi = new PublicApi(index, store, metadata)
 
   private val determineApiFor: String => Api = {
     case "private" => privateApi

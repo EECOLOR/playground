@@ -9,7 +9,7 @@ import testUtils.TestStore
 import org.qirx.cms.metadata.properties.Label
 import org.qirx.cms.metadata.dsl.Document
 import testUtils.TestEnvironment
-import org.qirx.cms.construction.Save
+import org.qirx.cms.construction.Store.Save
 import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.arr
 import play.api.libs.json.__
@@ -23,6 +23,7 @@ import play.api.test.Helpers
 import testUtils.TestApplication
 import play.api.libs.json.JsValue
 import testUtils.PostToApplication
+import testUtils.TestIndex
 
 object _05_Evolution extends Specification with Example {
 
@@ -46,9 +47,11 @@ object _05_Evolution extends Specification with Example {
     val authenticate: RequestHeader => Future[Boolean] = { _ => Future.successful(true) }
 
     val testStore = new TestStore
+    val testIndex = new TestIndex
     val testEnvironment =
       new Environment {
         val store = testStore
+        val index = testIndex
         def reportDocumentMetadataMismatch(document: JsObject, meta: DocumentMetadata, validationResults: Seq[JsObject]): Unit =
           ???
       }
@@ -102,6 +105,7 @@ object _05_Evolution extends Specification with Example {
         val testEnvironment =
           new Environment {
             val store = testStore
+            val index = testIndex
 
             def reportDocumentMetadataMismatch(document: JsObject, meta: DocumentMetadata, validationResults: Seq[JsObject]): Unit = {
               val report = (document, meta, validationResults)
@@ -159,6 +163,7 @@ object _05_Evolution extends Specification with Example {
       val testEnvironment =
         new Environment {
           val store = testStore
+          val index = testIndex
 
           def reportDocumentMetadataMismatch(document: JsObject, meta: DocumentMetadata, validationResults: Seq[JsObject]): Unit = {
             val report = (document, meta, validationResults)
@@ -189,5 +194,7 @@ object _05_Evolution extends Specification with Example {
         reports is Seq.empty
       }
     }
+       
+       "update the index" - {}
   }
 }

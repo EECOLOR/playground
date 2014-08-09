@@ -4,9 +4,9 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import org.qirx.cms.Environment
 import org.qirx.cms.construction.GetMessages
-import org.qirx.cms.construction.List
 import org.qirx.cms.construction.Metadata
 import org.qirx.cms.construction.Store
+import org.qirx.cms.construction.Store.List
 import org.qirx.cms.construction.Validate
 import org.qirx.cms.machinery.BuildTools
 import org.qirx.cms.machinery.ExecutionTools

@@ -3,11 +3,7 @@ package org.qirx.cms.execution
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-import org.qirx.cms.construction.Delete
-import org.qirx.cms.construction.Get
-import org.qirx.cms.construction.List
-import org.qirx.cms.construction.Save
-import org.qirx.cms.construction.SaveIdReference
+import org.qirx.cms.construction.Store._
 import org.qirx.cms.construction.Store
 import org.qirx.cms.machinery.~>
 
@@ -16,9 +12,9 @@ import play.api.libs.json.Json.obj
 import org.qirx.cms.metadata.Evolutions
 
 /**
- * A store that wraps another store. It will add a version to the saved documents 
+ * A store that wraps another store. It will add a version to the saved documents
  * which is used (during retrieval) to determine which evolutions should be applied.
- * After the evolutions have been applied the version is removed from the retrieved 
+ * After the evolutions have been applied the version is removed from the retrieved
  * documents.
  */
 class EvolvingStore(
@@ -43,6 +39,9 @@ class EvolvingStore(
 
     case saveIdReference: SaveIdReference =>
       store(saveIdReference)
+
+    case getActualId: GetActualId =>
+      store(getActualId)
 
     case delete: Delete =>
       store(delete)

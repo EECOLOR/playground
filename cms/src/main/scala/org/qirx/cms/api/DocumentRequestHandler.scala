@@ -1,39 +1,40 @@
 package org.qirx.cms.api
 
-import org.qirx.cms.metadata.DocumentMetadata
-import org.qirx.cms.construction.api.GetNextSegment
-import org.qirx.cms.construction.api.GetFieldSetFromQueryString
-import org.qirx.cms.construction.api.DocumentsResult
-import org.qirx.cms.construction.api.DocumentResult
-import views.html.defaultpages.notFound
-import org.qirx.cms.machinery.ProgramType
-import play.api.mvc.Request
-import org.qirx.cms.construction.Return
-import org.qirx.cms.construction.Get
-import org.qirx.cms.construction.Get
-import play.api.mvc.AnyContent
-import org.qirx.cms.machinery.BuildTools._
-import org.qirx.cms.machinery.~>
-import org.qirx.cms.construction.Store
+import scala.language.higherKinds
+import org.qirx.cms.construction.GetMessages
 import org.qirx.cms.construction.Metadata
+import org.qirx.cms.construction.Return
+import org.qirx.cms.construction.Store
+import org.qirx.cms.construction.Store.Delete
+import org.qirx.cms.construction.Store.Get
+import org.qirx.cms.construction.Store.List
+import org.qirx.cms.construction.Store.Save
+import org.qirx.cms.construction.Store.SaveIdReference
+import org.qirx.cms.construction.System
+import org.qirx.cms.construction.Validate
+import org.qirx.cms.construction.api.AddId
+import org.qirx.cms.construction.api.DocumentCreatedResult
+import org.qirx.cms.construction.api.DocumentResult
+import org.qirx.cms.construction.api.DocumentsResult
+import org.qirx.cms.construction.api.ExtractId
+import org.qirx.cms.construction.api.GetFieldSetFromQueryString
+import org.qirx.cms.construction.api.GetNextSegment
+import org.qirx.cms.construction.api.Merge
+import org.qirx.cms.construction.api.ToJsObject
+import org.qirx.cms.construction.api.ToJsValue
+import org.qirx.cms.construction.api.ValitationResultsToResult
+import org.qirx.cms.machinery.BuildTools.IterableContinuation
+import org.qirx.cms.machinery.BuildTools.OptionContinuation
+import org.qirx.cms.machinery.BuildTools.toProgram
+import org.qirx.cms.machinery.ProgramType
+import org.qirx.cms.machinery.{~> => ~>}
+import org.qirx.cms.metadata.DocumentMetadata
+import play.api.libs.json.JsObject
+import play.api.mvc.AnyContent
+import play.api.mvc.Request
 import org.qirx.cms.construction.Branch
 import play.api.mvc.Result
-import org.qirx.cms.construction.List
-import org.qirx.cms.construction.System
-import scala.language.higherKinds
-import org.qirx.cms.construction.api.ToJsObject
-import org.qirx.cms.construction.Save
-import org.qirx.cms.construction.api.AddId
-import org.qirx.cms.construction.api.ExtractId
-import org.qirx.cms.construction.api.ToJsValue
-import org.qirx.cms.construction.Delete
-import play.api.libs.json.JsObject
-import org.qirx.cms.construction.GetMessages
-import org.qirx.cms.construction.api.ValitationResultsToResult
-import org.qirx.cms.construction.api.DocumentCreatedResult
-import org.qirx.cms.construction.SaveIdReference
-import org.qirx.cms.construction.api.Merge
-import org.qirx.cms.construction.Validate
+import org.qirx.cms.construction.Index
 
 /**
  * The implicit parameters are used to make sure we have the correct
@@ -53,8 +54,9 @@ class DocumentRequestHandler[O[_]](
     implicit e: ProgramType[O],
     e1: System ~> O,
     e2: Store ~> O,
-    e3: Metadata ~> O,
-    e4: Branch[Result]#T ~> O) extends Results {
+    e3: Index ~> O,
+    e4: Metadata ~> O,
+    e5: Branch[Result]#T ~> O) extends Results {
 
   def get =
     for {
@@ -87,6 +89,7 @@ class DocumentRequestHandler[O[_]](
     for {
       documentWithId <- AddId(document, id)
       _ <- Save(meta.id, id, documentWithId)
+      _ <- Index.Put(meta.id, id, documentWithId)
       result <- DocumentCreatedResult(id)
     } yield result
   }
@@ -114,6 +117,8 @@ class DocumentRequestHandler[O[_]](
       _ <- SaveIdReference(meta.id, id, newId)
       _ <- Delete(meta.id, id)
       _ <- Save(meta.id, actualId, documentWithId)
+      _ <- Index.Delete(meta.id, id)
+      _ <- Index.Put(meta.id, actualId, documentWithId)
     } yield noContent
 
 }

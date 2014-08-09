@@ -8,11 +8,7 @@ import scala.collection.mutable.ListBuffer
 import play.api.libs.json.JsString
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.construction.Store
-import org.qirx.cms.construction.Get
-import org.qirx.cms.construction.Save
-import org.qirx.cms.construction.SaveIdReference
-import org.qirx.cms.construction.List
-import org.qirx.cms.construction.Delete
+import org.qirx.cms.construction.Store._
 
 class TestStore extends (Store ~> Future) {
 
@@ -20,15 +16,16 @@ class TestStore extends (Store ~> Future) {
 
   val idMappings = mutable.Map.empty[String, String]
 
-  def storeFor(metaId:String) = storage.getOrElseUpdate(metaId, mutable.Map.empty)
+  def storeFor(metaId:String) = storage.getOrElseUpdate(metaId, mutable.LinkedHashMap.empty)
+
+  def getActualId(id: String): String =
+        idMappings.get(id).map(getActualId).getOrElse(id)
   
   def transform[x] = {
     case Get(metaId, id, fieldSet) =>
       val store = storeFor(metaId)
-      def getId(id: String): String =
-        idMappings.get(id).map(getId).getOrElse(id)
 
-      val actualId = getId(id)
+      val actualId = getActualId(id)
       val obj = store.get(actualId)
       val filteredObj =
         if (fieldSet.isEmpty) obj
@@ -51,6 +48,9 @@ class TestStore extends (Store ~> Future) {
       newId.foreach(newId => idMappings += (id -> newId))
       
       Future.successful(())
+      
+    case GetActualId(metaId, id) =>
+      Future.successful(getActualId(id))
       
     case Delete(metaId, id) =>
       val store = storeFor(metaId)

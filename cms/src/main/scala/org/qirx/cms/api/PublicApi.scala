@@ -20,8 +20,11 @@ import org.qirx.cms.execution.SystemRunner
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.construction.Branch
 import org.qirx.cms.construction.Return
+import org.qirx.cms.machinery.Free
+import org.qirx.cms.construction.Index
 
 class PublicApi(
+  index: Index ~> Future,
   store: Store ~> Future,
   metadata: Metadata ~> Id)(
     implicit val ec: ExecutionContext) extends Api with Results
@@ -34,25 +37,30 @@ class PublicApi(
     branched.value.map(_.value.merge)
   }
 
-  private type Elements = ProgramType[(Base + Store + Metadata + Branch[Result]#T)#T]
+  private type Elements = ProgramType[(Base + Index + Store + Metadata + Branch[Result]#T)#T]
 
   /**
    * The implicit parameter determines the type of the resulting program
    */
   private def programFor(request: Request[AnyContent], pathSegments: Seq[String])(implicit e: Elements) =
     for {
+      _ <- Return(validRequestMethod(request.method)) ifNone Return(methodNotAllowed)
       (segment, rest) <- GetNextSegment(pathSegments) ifNone Return(notFound)
-      result <- (request.method, segment) match {
-        case ("GET", "search") => searchRequest(request, rest)
-        case ("GET", id) => documentRequest(request, id, rest)
-        case _ => Return(methodNotAllowed).asProgram
+      result <- segment match {
+        //case "search" => searchRequest(request, rest)
+        case id => documentRequest(request, id, rest)
       }
     } yield result
+
+  private val validRequestMethod: String => Option[String] = {
+    case get @ "GET" => Some(get)
+    case _ => None
+  }
 
   private def documentRequest(request: Request[AnyContent], id: String, pathAtDocument: Seq[String])(implicit e: Elements) =
     for {
       meta <- GetDocumentMetadata(id) ifNone Return(notFound)
-      handler = new DocumentRequestHandler(meta, request, pathAtDocument)
+      handler = new IndexRequestHandler(meta, request, pathAtDocument)
       result <- handler.get
     } yield result
 
@@ -63,8 +71,9 @@ class PublicApi(
     val branchRunner = BranchToFuture
     val systemRunner = SystemRunner andThen IdToBranch andThen BranchToFuture
     val metadataRunner = metadata andThen IdToBranch andThen BranchToFuture
+    val indexRunner = index andThen FutureToFutureBranch
     val storeRunner = store andThen FutureToFutureBranch
 
-    storeRunner or systemRunner or metadataRunner or branchRunner
+    indexRunner or storeRunner or systemRunner or metadataRunner or branchRunner
   }
 }

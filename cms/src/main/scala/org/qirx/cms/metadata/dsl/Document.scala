@@ -7,15 +7,16 @@ import org.qirx.cms.metadata.DocumentIdGenerator
 import java.text.Normalizer
 import org.qirx.cms.metadata.Evolution
 import org.qirx.cms.metadata.Evolutions
+import scala.collection.immutable.ListMap
 
 object Document {
   def apply(id: String, idField: String)(properties: (String, PropertyMetadata)*): DocumentMetadata =
-    DefaultDocument(id, idField, properties.toMap)
+    DefaultDocument(id, idField, ListMap(properties:_*))
 
   private case class DefaultDocument(
     id: String,
     idField: String,
-    properties: Map[String, PropertyMetadata],
+    properties: ListMap[String, PropertyMetadata],
     evolutions: Evolutions = new Evolutions(Seq.empty)) extends DocumentMetadata {
 
     val idGenerator =

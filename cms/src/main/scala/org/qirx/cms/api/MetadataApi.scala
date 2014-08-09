@@ -23,6 +23,10 @@ object MetadataApi extends Api with play.api.mvc.Results with Status {
                 "name" -> "title"
               ),
               obj(
+                "id" -> "label",
+                "name" -> "secret"
+              ),
+              obj(
                 "id" -> "rich_content",
                 "name" -> "body",
                 "optional" -> true,

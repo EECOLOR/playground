@@ -7,5 +7,6 @@ import scala.collection.mutable.ListBuffer
 
 class TestEnvironment extends Environment {
   val store = new TestStore
+  val index = new TestIndex
   def reportDocumentMetadataMismatch(document:JsObject, meta:DocumentMetadata, validationResults:Seq[JsObject]):Unit = ???
 }

@@ -11,11 +11,11 @@ import scala.concurrent.duration._
 import play.api.libs.json.Json
 
 trait RouteRequest {
-  val app: Application
+  val application: Application
 
   def routeRequest[T: Writeable](request: Request[T]) =
-    Helpers.running(app) {
-      val result = Helpers.route(app, request).get
+    Helpers.running(application) {
+      val result = Helpers.route(application, request).get
 
       implicit val timeout = Timeout(2.seconds)
 
@@ -28,7 +28,7 @@ trait RouteRequest {
 
 abstract class WithBodyToApplication(
   method: String,
-  val app: Application,
+  val application: Application,
   pathPrefix: String) extends RouteRequest {
   
   class WithTo[T: Writeable](body: T, header: Option[(String, String)] = None) {
@@ -56,7 +56,7 @@ class PostToApplication(app: Application, pathPrefix: String = "")
 class PutToApplication(app: Application, pathPrefix: String = "")
   extends WithBodyToApplication("PUT", app, pathPrefix)
 
-class GetFromApplication(val app: Application, pathPrefix: String = "") extends RouteRequest {
+class GetFromApplication(val application: Application, pathPrefix: String = "") extends RouteRequest {
 
   def from(path: String) = {
     val request = FakeRequest("GET", pathPrefix + path)
