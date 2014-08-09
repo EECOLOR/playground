@@ -60,7 +60,7 @@ class TestStore extends (Store ~> Future) {
       
     case Delete(metaId, id) =>
       val store = storeFor(metaId)
-      store -= id
+      id.fold(ifEmpty = store.clear())(store -= _)
       
       Future.successful(())
 

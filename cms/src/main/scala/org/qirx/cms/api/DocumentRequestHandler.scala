@@ -113,10 +113,20 @@ class DocumentRequestHandler[O[_]](
 
   def delete =
     for {
-      result <- Return(notFound)
-    } yield result
+      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
+      _ <- Exists(meta.id, id) ifFalse Return(notFound)
+      _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
+      _ <- Delete(meta.id, Some(id))
+      _ <- Index.Delete(meta.id, Some(id)) 
+    } yield noContent
 
-  private def extractIdAndDocumentFromRequest =
+  private val deleteAll =
+    for {
+      _ <- Delete(meta.id)
+      _ <- Index.Delete(meta.id)
+    } yield noContent
+
+  private val extractIdAndDocumentFromRequest =
     for {
       json <- ToJsValue(request) ifNone Return(badRequest)
       document <- ToJsObject(json) ifNone Return(jsonExpected)
@@ -144,8 +154,8 @@ class DocumentRequestHandler[O[_]](
       _ <- SaveIdReference(meta.id, oldId, newId)
       _ <- Save(meta.id, newId, document)
       _ <- putInIndex(newId, document)
-      _ <- Delete(meta.id, oldId)
-      _ <- Index.Delete(meta.id, oldId)
+      _ <- Delete(meta.id, Some(oldId))
+      _ <- Index.Delete(meta.id, Some(oldId))
     } yield noContent
 
   private def putInIndex(id: String, document: JsObject) =

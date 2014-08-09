@@ -26,6 +26,7 @@ import testUtils.PutToApplication
 import testUtils.RouteRequest
 import play.api.test.FakeRequest
 import testUtils.PatchToApplication
+import testUtils.DeleteFromApplication
 
 class _02_Private_Api extends Specification with ApiExampleSpecification {
 
@@ -39,6 +40,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
       val GET = new GetFromApplication(app, privateApiPrefix)
       val PUT = new PutToApplication(app, privateApiPrefix)
       val PATCH = new PatchToApplication(app, privateApiPrefix)
+      val DELETE = new DeleteFromApplication(app, privateApiPrefix)
 
       """|Note that this API only supports a few request methods, it will return 
          |a failure for any non-suported method""".stripMargin - {
@@ -49,8 +51,8 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         import helper._
         import Helpers._
         example {
-          val methods = Seq("HEAD", "DELETE", "TRACE", "OPTIONS", "CONNECT")
-          methods.foreach { method =>
+          val nonSupportedMethods = Seq("HEAD", "TRACE", "OPTIONS", "CONNECT")
+          nonSupportedMethods.foreach { method =>
             val (status, body) = routeRequest(FakeRequest(method, "/api/private"))
             body is obj(
               "status" -> 405,
@@ -239,13 +241,32 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      "Note that the document with the old id has been removed" - {
+      "Note that the document with the old id has been removed" - example {
         val (_, body) = GET from "/article?fields=id"
+        
         body is arr(obj("id" -> "article_1"), obj("id" -> "article_2"))
       }
 
-      "deleting" - {}
+      "Let's remove an article" - example {
+        val (status, body) = DELETE from "/article/article_2"
+        
+        status is 204
+        body is null
+      }
 
+      "As you can see, it's removed" - example {
+        val (_, body) = GET from "/article?fields=id"
+        
+        body is arr(obj("id" -> "article_1"))
+      }
+      
+      "It's also possible to remove all documents" - example {
+        val (status, body) = DELETE from "/article"
+        
+        status is 204
+        body is null
+      }
+      
       "generated fields" - {}
     }
   }

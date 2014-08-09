@@ -12,6 +12,7 @@ import play.api.test.FakeRequest
 import testUtils.PutToApplication
 import testUtils.cmsName
 import testUtils.PatchToApplication
+import testUtils.DeleteFromApplication
 
 class _03_Public_Api extends Specification with ApiExampleSpecification {
   "# The public API" - {
@@ -24,6 +25,7 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
       val POST = new PostToApplication(app, privateApiPrefix)
       val GET = new GetFromApplication(app, publicApiPrefix)
       val PATCH = new PatchToApplication(app, privateApiPrefix)
+      val DELETE = new DeleteFromApplication(app, privateApiPrefix)
 
       """|This API provides the same GET endpoints that are available in the 
          |private API without authentication.
@@ -178,8 +180,31 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      "deleting" - {}
+      "When a document is deleted, it's also deleted from the index" - example {
+        val (status, _) = DELETE from "/article/article_2"
+        status is 204
+        
+        val (_, body) = GET from "/article"
+        body is arr()
+      }
 
+      "I've added two documents to make sure I can show removal of multiple documents" -
+      example {
+        POST(obj("title" -> "Article 1")) to "/article"
+        POST(obj("title" -> "Article 2")) to "/article"
+
+        val (_, body) = GET from "/article?fields=id"
+        body is arr(obj("id" -> "article_1"), obj("id" -> "article_2"))
+      }
+      
+      "Removing multiple documents" - example {
+        val (status, _) = DELETE from "/article"
+        status is 204
+        
+        val (_, body) = GET from "/article"
+        body is arr()
+      } 
+      
       s"""|##Search
           |
           |The public API has one special endpoint called `search`. This endpoint 
