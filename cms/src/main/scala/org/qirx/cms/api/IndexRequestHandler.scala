@@ -16,6 +16,7 @@ import org.qirx.cms.construction.Index
 import scala.language.higherKinds
 import org.qirx.cms.machinery.Free
 import org.qirx.cms.construction.Return
+import org.qirx.cms.construction.ValueOf
 import org.qirx.cms.construction.api.GetFieldSetFromQueryString
 import org.qirx.cms.construction.api.GetNextSegment
 import play.api.libs.json.JsObject
@@ -39,7 +40,7 @@ class IndexRequestHandler[O[_]](meta: DocumentMetadata,
     for {
       fieldSet <- GetFieldSetFromQueryString(request.queryString)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
-      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+      _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       actualId <- Store.GetActualId(meta.id, id)
       document <- Get(meta.id, actualId, fieldSet) ifNone Return(notFound)
       result <- DocumentResult(document)

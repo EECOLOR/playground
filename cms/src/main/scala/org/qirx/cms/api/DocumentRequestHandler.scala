@@ -4,6 +4,7 @@ import scala.language.higherKinds
 import org.qirx.cms.construction.GetMessages
 import org.qirx.cms.construction.Metadata
 import org.qirx.cms.construction.Return
+import org.qirx.cms.construction.ValueOf
 import org.qirx.cms.construction.Store
 import org.qirx.cms.construction.Store.Delete
 import org.qirx.cms.construction.Store.Get
@@ -63,7 +64,7 @@ class DocumentRequestHandler[O[_]](
     for {
       fieldSet <- GetFieldSetFromQueryString(request.queryString)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
-      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+      _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       document <- Get(meta.id, id, fieldSet) ifNone Return(notFound)
       result <- DocumentResult(document)
     } yield result
@@ -96,46 +97,55 @@ class DocumentRequestHandler[O[_]](
 
   def put =
     for {
-      json <- ToJsValue(request) ifNone Return(badRequest)
-      document <- ToJsObject(json) ifNone Return(jsonExpected)
-      messages <- GetMessages(meta)
-      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
-      documentWithId <- AddId(document, id)
-      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+      (id, document) <- extractIdAndDocumentFromRequest
       _ <- Exists(meta.id, id) ifFalse Return(notFound)
-      results <- Validate(meta, documentWithId, messages) ifEmpty update(id, documentWithId)
-      result <- ValitationResultsToResult(results)
+      documentWithId <- AddId(document, id)
+      result <- validateAndUpdate(id, documentWithId)
     } yield result
 
   def patch =
     for {
-      json <- ToJsValue(request) ifNone Return(badRequest)
-      newDocument <- ToJsObject(json) ifNone Return(jsonExpected)
-      messages <- GetMessages(meta)
-      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
-      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+      (id, newDocument) <- extractIdAndDocumentFromRequest
       oldDocument <- Get(meta.id, id, Set.empty) ifNone Return(notFound)
       merged <- Merge(oldDocument, newDocument)
-      results <- Validate(meta, merged, messages) ifEmpty update(id, merged)
+      result <- validateAndUpdate(id, merged)
+    } yield result
+
+  def delete =
+    for {
+      result <- Return(notFound)
+    } yield result
+
+  private def extractIdAndDocumentFromRequest =
+    for {
+      json <- ToJsValue(request) ifNone Return(badRequest)
+      document <- ToJsObject(json) ifNone Return(jsonExpected)
+      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
+      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+    } yield (id, document)
+
+  private def validateAndUpdate(id: String, document: JsObject) =
+    for {
+      messages <- GetMessages(meta)
+      results <- Validate(meta, document, messages) ifEmpty update(id, document)
       result <- ValitationResultsToResult(results)
     } yield result
 
   private def update(id: String, document: JsObject) =
     for {
       newId <- ExtractId(document)
-      _ <- if (newId == id)
-        for {
-          _ <- Save(meta.id, id, document)
-          _ <- putInIndex(id, document)
-        } yield ()
-      else
-        for {
-          _ <- SaveIdReference(meta.id, id, newId)
-          _ <- Save(meta.id, newId, document)
-          _ <- putInIndex(newId, document)
-          _ <- Delete(meta.id, id)
-          _ <- Index.Delete(meta.id, id)
-        } yield ()
+      _ <- ValueOf(newId == id) ifFalse saveWithNewId(id, newId, document)
+      _ <- Save(meta.id, id, document)
+      _ <- putInIndex(id, document)
+    } yield noContent
+
+  private def saveWithNewId(oldId: String, newId: String, document: JsObject) =
+    for {
+      _ <- SaveIdReference(meta.id, oldId, newId)
+      _ <- Save(meta.id, newId, document)
+      _ <- putInIndex(newId, document)
+      _ <- Delete(meta.id, oldId)
+      _ <- Index.Delete(meta.id, oldId)
     } yield noContent
 
   private def putInIndex(id: String, document: JsObject) =

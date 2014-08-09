@@ -52,11 +52,12 @@ class PrivateApi(
         case "GET" => handler.get
         case "PUT" => handler.put
         case "PATCH" => handler.patch
+        case "DELETE" => handler.delete
       }
     } yield result
 
   private val validRequestMethod: String => Option[String] = {
-    case method @ ("GET" | "POST" | "PUT" | "PATCH") => Some(method)
+    case method @ ("GET" | "POST" | "PUT" | "PATCH" | "DELETE") => Some(method)
     case _ => None
   }
 
