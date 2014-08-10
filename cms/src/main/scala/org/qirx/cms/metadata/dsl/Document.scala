@@ -32,7 +32,7 @@ object Document {
 
           lowerCase.replaceAll(" ", "_")
         }
-        def makeUnique(id: String, value: JsObject): String = ???
+        def makeUnique(id: String): String = id + "1"
       }
 
     def withEvolutions(evolutions: Evolution*) =

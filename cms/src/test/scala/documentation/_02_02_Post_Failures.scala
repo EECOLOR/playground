@@ -108,7 +108,5 @@ object _02_02_Post_Failures extends Specification with ApiExampleSpecification {
         "error" -> "notFound"
       )
     }
-    
-    "Existing document" - {}
   }
 }

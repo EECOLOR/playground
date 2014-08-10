@@ -37,6 +37,12 @@ import play.api.mvc.Result
 import org.qirx.cms.construction.Index
 import org.qirx.cms.construction.RemoveConfidentialProperties
 import org.qirx.cms.machinery.Free
+import org.qirx.cms.machinery.Apply
+import org.qirx.cms.machinery.Id
+import org.qirx.cms.construction.DirectAction
+import org.qirx.cms.machinery.Co
+import org.qirx.cms.execution.SystemRunner
+import org.qirx.cms.machinery.FlatMap
 
 /**
  * The implicit parameters are used to make sure we have the correct
@@ -88,11 +94,47 @@ class DocumentRequestHandler[O[_]](
   private def create(document: JsObject) = {
     val id = meta.idGenerator.generateFor(document)
     for {
-      documentWithId <- AddId(document, id)
-      _ <- Save(meta.id, id, documentWithId)
-      _ <- putInIndex(id, documentWithId)
-      result <- DocumentCreatedResult(id)
+      uniqueId <- getUniqueId(id)
+      documentWithId <- AddId(document, uniqueId)
+      _ <- Save(meta.id, uniqueId, documentWithId)
+      _ <- putInIndex(uniqueId, documentWithId)
+      result <- DocumentCreatedResult(uniqueId)
     } yield result
+  }
+
+  private def getUniqueId(id: String): Free[O, String] = {
+    // TODO generalize the stuff below
+    type WithBranch[BranchType] = {
+      type T[x] = (Base + Store + Branch[BranchType]#T)#T[x]
+    }
+    type WithoutBranch[x] = (Base + Store)#T[x]
+
+    def removeEqualBranch[T](in: Free[WithBranch[T]#T, T]): Free[WithoutBranch, T] =
+      in match {
+        case Apply(a) => Apply(a)
+        case FlatMap(fa, f) =>
+          val toWithoutBranchOfT = f andThen removeEqualBranch
+
+          fa.value match {
+            case Left(branch) =>
+              branch.value match {
+                case Left(any) => toWithoutBranchOfT(any)
+                case Right(t) => Apply(t)
+              }
+            case Right(withoutBranch) =>
+              Free(withoutBranch).flatMap(toWithoutBranchOfT)
+          }
+      }
+
+    removeEqualBranch(uniqueIdProgram(id)).mapSuspension[O]
+  }
+
+  private def uniqueIdProgram(id: String)(
+    implicit e: ProgramType[(Base + Store + Branch[String]#T)#T]): Free[e.Result, String] = {
+    for {
+      _ <- Exists(meta.id, id) ifFalse ValueOf(id)
+      uniqueId <- uniqueIdProgram(meta.idGenerator.makeUnique(id))
+    } yield uniqueId
   }
 
   def put =
@@ -117,7 +159,7 @@ class DocumentRequestHandler[O[_]](
       _ <- Exists(meta.id, id) ifFalse Return(notFound)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       _ <- Delete(meta.id, Some(id))
-      _ <- Index.Delete(meta.id, Some(id)) 
+      _ <- Index.Delete(meta.id, Some(id))
     } yield noContent
 
   private val deleteAll =

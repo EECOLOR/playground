@@ -5,6 +5,27 @@ import org.qirx.cms.construction.Branch
 
 trait BranchEnhancements {
 
+  /*
+  trait BranchType[A, B] {
+    type Result
+    def createResultFrom(value:Either[A, B]):Result
+  }
+  trait LowerPriorityBranchType {
+    def branched[A, B] = new BranchType[A, B] {
+      type Result = Branch[B]#T[A]
+      def createResultFrom(value:Either[A, B]):Result = 
+        Branch[B].Instance(value)
+    }
+  }
+  object LiftType extends LowerPriorityBranchType {
+    def same[A] = new BranchType[A, A] {
+      type Result = A
+      def createResultFrom(value:Either[A, A]):Result = 
+        value.merge
+    }
+  }
+  */
+  
   private type Lift[F[_], B] = Branch[B]#T ~> F
 
   def branch[F[_], A, B, O[_]](p1: Program[F, A], p2: => Program[F, B])(

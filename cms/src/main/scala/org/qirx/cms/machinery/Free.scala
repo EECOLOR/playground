@@ -5,7 +5,7 @@ import scala.language.higherKinds
 trait Free[F[_], A] {
 
   type Result[x] = F[x]
-  
+
   def flatMap[B](f: A => Free[F, B]): Free[F, B] =
     this match {
       case Apply(a) => f(a)
@@ -31,7 +31,7 @@ trait Free[F[_], A] {
         G.flatMap(transform(fa), f andThen (_ foldMap transform))
     }
   }
-  
+
   // pattern match support
   def withFilter(f: Any => Boolean): Free[F, A] =
     this
@@ -44,8 +44,11 @@ object Free {
   trait Monad[F[_]] {
     def apply[A](a: A): F[A]
     def flatMap[A, B](a: F[A], f: A => F[B]): F[B]
-    def map[A, B](a:F[A], f:A => B):F[B] = 
-      flatMap(a, (a:A) => apply(f(a)))
+
+    def map[A, B](a: F[A], f: A => B): F[B] =
+      flatMap(a, (a: A) => apply(f(a)))
+    def flatten[A](a: F[F[A]]): F[A] =
+      flatMap(a, identity[F[A]])
   }
 
   object Monad {
