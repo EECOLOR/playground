@@ -24,6 +24,7 @@ import testUtils.ApiExampleSpecification
 import testUtils.GetFromApplication
 import testUtils.PutToApplication
 import testUtils.RouteRequest
+import testUtils.withFixedDateTime
 import play.api.test.FakeRequest
 import testUtils.PatchToApplication
 import testUtils.DeleteFromApplication
@@ -97,7 +98,9 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "tags" -> arr("tag1", "tag2")
         )
 
-        val (status, body) = POST(article) to "/article"
+        val (status, body) = withFixedDateTime {
+          POST(article) to "/article"
+        }
 
         status is 201
         body is obj(
@@ -105,7 +108,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      "The article can now be retrieved" - {
+      "The article can now be retrieved, note that it generated the date" - {
         val (status, body) = GET from "/article"
 
         status is 200
@@ -134,7 +137,8 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
                 )
               )
             ),
-            "tags" -> arr("tag1", "tag2")
+            "tags" -> arr("tag1", "tag2"),
+            "date" -> "2011-07-10T20:39:21+02:00"
           )
         )
       }
@@ -182,7 +186,9 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "title" -> "Article 2"
         )
 
-        val (status, body) = PUT(article) at "/article/article_3"
+        val (status, body) = withFixedDateTime {
+          PUT(article) at "/article/article_3"
+        } 
         status is 204
         body is null
       }
@@ -192,7 +198,8 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         status is 200
         body is obj(
           "id" -> "article_3",
-          "title" -> "Article 2"
+          "title" -> "Article 2",
+          "date" -> "2011-07-10T20:39:21+02:00"
         )
       }
 
@@ -201,7 +208,9 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "tags" -> arr("tag1", "tag3")
         )
 
-        val (status, body) = PATCH("/article/article_3") using withTags
+        val (status, body) = withFixedDateTime {
+          PATCH("/article/article_3") using withTags
+        } 
         status is 204
         body is null
       }
@@ -212,7 +221,8 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         body is obj(
           "id" -> "article_3",
           "title" -> "Article 2",
-          "tags" -> arr("tag1", "tag3")
+          "tags" -> arr("tag1", "tag3"),
+          "date" -> "2011-07-10T20:39:21+02:00"
         )
 
       }
@@ -285,8 +295,6 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         status is 204
         body is null
       }
-
-      "generated fields" - {}
     }
   }
 }

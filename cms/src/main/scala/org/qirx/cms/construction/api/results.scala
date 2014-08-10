@@ -13,10 +13,9 @@ import play.api.libs.json.Writes
 trait ResultCreation extends DirectAction[Result]
 
 case class ValitationResultsToResult(validationResults: Seq[JsObject]) extends ResultCreation {
-  val result =
-        UnprocessableEntity(obj(
-            "status" -> UNPROCESSABLE_ENTITY, 
-            "propertyErrors" -> validationResults))
+  val result = UnprocessableEntity(obj(
+    "status" -> UNPROCESSABLE_ENTITY,
+    "propertyErrors" -> validationResults))
 }
 
 case class DocumentsResult(documents: Seq[JsObject]) extends ResultCreation {

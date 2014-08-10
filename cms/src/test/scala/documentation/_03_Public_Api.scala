@@ -13,12 +13,13 @@ import testUtils.PutToApplication
 import testUtils.cmsName
 import testUtils.PatchToApplication
 import testUtils.DeleteFromApplication
+import testUtils.withFixedDateTime
 
 class _03_Public_Api extends Specification with ApiExampleSpecification {
   "# The public API" - {
 
     val publicApiPrefix = "/api/public"
-        val privateApiPrefix = "/api/private"
+    val privateApiPrefix = "/api/private"
 
     withApiExampleIntroduction(apiPrefix = publicApiPrefix) { app =>
 
@@ -62,13 +63,15 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
         }
       }
 
-      "So we need to create a new instance" - example {
+      "Before I can show you how the api works I create a new document" - example {
         val article = obj(
           "title" -> "Article 1",
           "tags" -> arr("tag1", "tag2")
         )
 
-        val (status, body) = POST(article) to "/article"
+        val (status, body) = withFixedDateTime {
+          POST(article) to "/article"
+        }
 
         status is 201
         body is obj(
@@ -84,7 +87,8 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
           obj(
             "id" -> "article_1",
             "title" -> "Article 1",
-            "tags" -> arr("tag1", "tag2")
+            "tags" -> arr("tag1", "tag2"),
+            "date" -> "2011-07-10T20:39:21+02:00"
           )
         )
       }
@@ -114,7 +118,7 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
 
       "If a document is updated, this change is reflected in the index as well" - example {
         val updateTitle = obj("title" -> "Article 2")
-        PATCH("/article/article_1") using updateTitle 
+        PATCH("/article/article_1") using updateTitle
 
         val (status, body) = GET from "/article/article_1?fields=id,title"
         status is 200
@@ -127,7 +131,7 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
       "If a documents id is updated, it's can be retrieved by it's new id." -
         example {
           val newId = obj("id" -> "article_2")
-          PATCH("/article/article_1") using newId 
+          PATCH("/article/article_1") using newId
 
           val (status, body) = GET from "/article/article_2?fields=id,title"
           status is 200
@@ -157,14 +161,16 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
       """|Because of the public nature of the index, confidential properties 
          |are not returned.""".stripMargin - example {
         val addSecret = obj("secret" -> "A secret about Article 2")
-        PATCH("/article/article_2") using addSecret 
+
+        PATCH("/article/article_2") using addSecret
 
         val (status, body) = GET from "/article/article_2"
         status is 200
         body is obj(
           "id" -> "article_2",
           "title" -> "Article 2",
-          "tags" -> arr("tag1", "tag2")
+          "tags" -> arr("tag1", "tag2"),
+          "date" -> "2011-07-10T20:39:21+02:00"
         )
       }
 
@@ -175,7 +181,8 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
           obj(
             "id" -> "article_2",
             "title" -> "Article 2",
-            "tags" -> arr("tag1", "tag2")
+            "tags" -> arr("tag1", "tag2"),
+            "date" -> "2011-07-10T20:39:21+02:00"
           )
         )
       }
@@ -183,28 +190,28 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
       "When a document is deleted, it's also deleted from the index" - example {
         val (status, _) = DELETE from "/article/article_2"
         status is 204
-        
+
         val (_, body) = GET from "/article"
         body is arr()
       }
 
       "I've added two documents to make sure I can show removal of multiple documents" -
-      example {
-        POST(obj("title" -> "Article 1")) to "/article"
-        POST(obj("title" -> "Article 2")) to "/article"
+        example {
+          POST(obj("title" -> "Article 1")) to "/article"
+          POST(obj("title" -> "Article 2")) to "/article"
 
-        val (_, body) = GET from "/article?fields=id"
-        body is arr(obj("id" -> "article_1"), obj("id" -> "article_2"))
-      }
-      
+          val (_, body) = GET from "/article?fields=id"
+          body is arr(obj("id" -> "article_1"), obj("id" -> "article_2"))
+        }
+
       "Removing multiple documents" - example {
         val (status, _) = DELETE from "/article"
         status is 204
-        
+
         val (_, body) = GET from "/article"
         body is arr()
-      } 
-      
+      }
+
       s"""|##Search
           |
           |The public API has one special endpoint called `search`. This endpoint 

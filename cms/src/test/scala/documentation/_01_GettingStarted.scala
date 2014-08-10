@@ -24,6 +24,7 @@ import scala.reflect.ClassTag
 import testUtils.TestApplication
 import testUtils.TestStore
 import testUtils.TestEnvironment
+import testUtils.withFixedDateTime
 
 
 object _01_GettingStarted extends Specification with Example {
@@ -57,7 +58,8 @@ object _01_GettingStarted extends Specification with Example {
             "secret" -> Confidential(Label.?),
             "body" -> RichContent.?,
             "tags" -> Tag.*,
-            "date" -> Date.generated
+            "date" -> Date.generated,
+            "publishDate" -> Date.? 
           )
         )
       )
@@ -104,7 +106,9 @@ object _01_GettingStarted extends Specification with Example {
             val article = obj("title" -> "Article 1")
             val auth = "X-Qirx-Authenticate" -> "let me in"
 
-            val (status, body) = POST(article) withHeader auth to "/api/private/article"
+            val (status, body) = withFixedDateTime {
+              POST(article) withHeader auth to "/api/private/article"
+            } 
 
             body is obj(
               "id" -> "article_1"
@@ -147,7 +151,8 @@ object _01_GettingStarted extends Specification with Example {
             body is arr(
               obj(
                 "id" -> "article_1",
-                "title" -> "Article 1"
+                "title" -> "Article 1",
+                "date" -> "2011-07-10T20:39:21+02:00"
               )
             )
           }

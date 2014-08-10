@@ -26,3 +26,7 @@ case class ExtractId(document: JsObject) extends DirectAction[String] {
 case class AddId(document: JsObject, id: String) extends DirectAction[JsObject] {
   val result = document ++ obj("id" -> id)
 }
+
+case class GetFieldsFrom(document:JsObject) extends DirectAction[Set[String]] {
+  val result = document.fields.map {case (name, _) => name}.toSet
+}

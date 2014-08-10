@@ -8,11 +8,24 @@ import org.qirx.cms.i18n.Messages
 
 trait GeneratableValue { self: PropertyMetadata =>
   def generated = new GeneratedValueProperty(self)
+  def generate:JsValue
 }
 
 class GeneratedValueProperty(property: PropertyMetadata with GeneratableValue)
   extends WrappedProperty(property) with PropertyValidation {
  
+  val generator = Some {() => 
+    val generatedValue = property.generate
+    
+    // implemented the checking as a side effect to keep the API simple
+    val validationResults = property.validate(Messages, Some(generatedValue))
+    validationResults.foreach { _ =>
+      sys.error(s"Generated value is invalid, value: $generatedValue\nvalidationResults: $validationResults")
+    }
+    
+    generatedValue
+  }
+  
   protected lazy val generatedErrorObj = idObj ++ obj("error" -> "generated")
   
   def validate(messages:Messages, value:Option[JsValue]):Option[JsObject] =

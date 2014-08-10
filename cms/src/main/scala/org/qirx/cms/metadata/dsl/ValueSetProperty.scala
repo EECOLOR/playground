@@ -16,6 +16,8 @@ trait Identifiable { self: Property =>
 class ValueSetProperty(property: Property with Identifiable, nonEmpty: Boolean)
   extends WrappedProperty(property) with PropertyValidation {
 
+  final val generator = None
+  
   protected val allowEmpty = !nonEmpty
 
   def validate(messages: Messages, value: Option[JsValue]): Option[JsObject] =

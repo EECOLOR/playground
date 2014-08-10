@@ -1,1 +1,2 @@
 article.title.required=The field `Title` can not be empty
+article.publishDate.invalidDate=The value `{0}` is not a valid date

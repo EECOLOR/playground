@@ -19,7 +19,8 @@ object _02_02_Post_Failures extends Specification with ApiExampleSpecification {
         "title" -> 0,
         "body" -> "no json",
         "tags" -> "not an array",
-        "date" -> "is generated"
+        "date" -> "is generated",
+        "publishDate" -> "invalid date"
       )
 
       val (status, body) = POST(article) to "/article"
@@ -47,6 +48,12 @@ object _02_02_Post_Failures extends Specification with ApiExampleSpecification {
             "id" -> "date",
             "name" -> "date",
             "error" -> "generated"
+          ),
+          obj(
+            "id" -> "date",
+            "name" -> "publishDate",
+            "messageKey" -> "invalidDate",
+            "message" -> "The value `invalid date` is not a valid date"
           )
         )
       )

@@ -29,7 +29,8 @@ trait ApiExampleSpecification extends Example { self: Specification =>
             "secret" -> Confidential(Label.?),
             "body" -> RichContent.?,
             "tags" -> Tag.*,
-            "date" -> Date.generated
+            "date" -> Date.generated,
+            "publishDate" -> Date.?
           )
         )
       )

@@ -5,14 +5,15 @@ import play.api.libs.json.JsValue
 import play.api.libs.json.JsObject
 import org.qirx.cms.i18n.Messages
 
-class ConfidentialProperty(property:PropertyMetadata) extends PropertyMetadata {
+class ConfidentialProperty(property: PropertyMetadata) extends PropertyMetadata {
   final val id = property.id
   final val confidential = true
+  final val generator = None
 
-  def validate(messages:Messages, value:Option[JsValue]):Option[JsObject] =
+  def validate(messages: Messages, value: Option[JsValue]): Option[JsObject] =
     property.validate(messages, value)
 }
 
 object Confidential {
-  def apply(property:PropertyMetadata) = new ConfidentialProperty(property)
+  def apply(property: PropertyMetadata) = new ConfidentialProperty(property)
 }
