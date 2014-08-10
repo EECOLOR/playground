@@ -102,38 +102,19 @@ class DocumentRequestHandler[O[_]](
     } yield result
   }
 
-  private def getUniqueId(id: String): Free[O, String] = {
-    // TODO generalize the stuff below
-    type WithBranch[BranchType] = {
-      type T[x] = (Base + Store + Branch[BranchType]#T)#T[x]
-    }
-    type WithoutBranch[x] = (Base + Store)#T[x]
+  private val makeUnique = meta.idGenerator.makeUnique _
 
-    def removeEqualBranch[T](in: Free[WithBranch[T]#T, T]): Free[WithoutBranch, T] =
-      in match {
-        case Apply(a) => Apply(a)
-        case FlatMap(fa, f) =>
-          val toWithoutBranchOfT = f andThen removeEqualBranch
-
-          fa.value match {
-            case Left(branch) =>
-              branch.value match {
-                case Left(any) => toWithoutBranchOfT(any)
-                case Right(t) => Apply(t)
-              }
-            case Right(withoutBranch) =>
-              Free(withoutBranch).flatMap(toWithoutBranchOfT)
-          }
-      }
-
-    removeEqualBranch(uniqueIdProgram(id)).mapSuspension[O]
+  private def getUniqueId(id: String) = {
+    val withBranch = uniqueIdProgram(id)
+    val withoutBranch = withBranch.mergeBranch
+    withoutBranch.mapSuspension[O]
   }
 
   private def uniqueIdProgram(id: String)(
     implicit e: ProgramType[(Base + Store + Branch[String]#T)#T]): Free[e.Result, String] = {
     for {
       _ <- Exists(meta.id, id) ifFalse ValueOf(id)
-      uniqueId <- uniqueIdProgram(meta.idGenerator.makeUnique(id))
+      uniqueId <- uniqueIdProgram(makeUnique(id))
     } yield uniqueId
   }
 

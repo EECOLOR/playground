@@ -9,7 +9,7 @@ trait ExecutionTools {
   implicit val ec: ExecutionContext
 
   type FutureSeq[T] = Future[Seq[T]]
-  implicit def monad = new Free.Monad[FutureSeq] {
+  implicit def futureSeqMonad = new Free.Monad[FutureSeq] {
     def apply[A](a: A) = Future.successful(Seq(a))
     def flatMap[A, B](fa: FutureSeq[A], f: A => FutureSeq[B]) = {
       fa.flatMap { list =>
@@ -17,17 +17,15 @@ trait ExecutionTools {
       }
     }
   }
-
-  object BranchToFuture extends (Branch[Result]#Instance ~> FutureResultBranch) {
-    def transform[x] = x => FutureResultBranch(Future successful x)
+  
+  implicit def futureMonad = new Free.Monad[Future] {
+    def apply[A](a:A) = Future.successful(a)
+    def flatMap[A, B](fa:Future[A], f:A => Future[B]) =
+      fa flatMap f
   }
 
   object IdToBranch extends (Id ~> Branch[Result]#Instance) {
     def transform[x] = x => Branch[Result].Instance(Left(x))
-  }
-
-  object FutureToFutureBranch extends (Future ~> FutureResultBranch) {
-    def transform[x] = x => FutureResultBranch(x map IdToBranch.apply)
   }
 
   object IdToFuture extends (Id ~> Future) {

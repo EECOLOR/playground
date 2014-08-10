@@ -12,7 +12,6 @@ import org.qirx.cms.construction.api._
 import org.qirx.cms.metadata.DocumentMetadata
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.construction._
-import org.qirx.cms.machinery.FutureResultBranch
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.Id
 import org.qirx.cms.execution.SystemRunner
@@ -31,8 +30,8 @@ class PrivateApi(
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathAtDocumentType)
-    val branched = program.foldMap(runner)
-    branched.value.map(_.value.merge)
+
+    program.mergeBranch.foldMap(runner)
   }
 
   private type Elements = ProgramType[(Base + Store + Index + Metadata + Authentication + Branch[Result]#T)#T]
@@ -62,13 +61,9 @@ class PrivateApi(
   }
 
   private lazy val runner = {
-    val branchRunner = BranchToFuture
-    val systemRunner = SystemRunner andThen IdToBranch andThen BranchToFuture
-    val metadataRunner = metadata andThen IdToBranch andThen BranchToFuture
-    val authenticationRunner = authentication andThen FutureToFutureBranch
-    val storeRunner = store andThen FutureToFutureBranch
-    val indexRunner = index andThen FutureToFutureBranch
+    val systemRunner = SystemRunner andThen IdToFuture
+    val metadataRunner = metadata andThen IdToFuture
 
-    storeRunner or indexRunner or systemRunner or metadataRunner or authenticationRunner or branchRunner
+    store or index or authentication or systemRunner or metadataRunner
   }
 }

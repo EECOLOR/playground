@@ -247,25 +247,6 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         body is arr(obj("id" -> "article_1"), obj("id" -> "article_2"))
       }
 
-      """|Let's add an article with the same title and notice that a new
-         |unique id is generated""".stripMargin - example {
-        val document = obj("title" -> "Article 1")
-        val (_, body) = POST(document) to "/article"
-        
-        body is obj(
-            "id" -> "article_1-1"
-        )
-      }
-         
-      "The default strategy will keep counting if we insert the same id again" - example {
-        val document = obj("title" -> "Article 1")
-        val (_, body) = POST(document) to "/article"
-        
-        body is obj(
-            "id" -> "article_1-2"
-        )
-      }
-
       "Let's remove an article" - example {
         val (status, body) = DELETE from "/article/article_2"
 
@@ -277,6 +258,25 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         val (_, body) = GET from "/article?fields=id"
 
         body is arr(obj("id" -> "article_1"))
+      }
+
+      """|Let's add an article with the same title and notice that a new
+         |unique id is generated""".stripMargin - example {
+        val document = obj("title" -> "Article 1")
+        val (_, body) = POST(document) to "/article"
+
+        body is obj(
+          "id" -> "article_1-1"
+        )
+      }
+
+      "The default strategy will keep counting if we insert the same id again" - example {
+        val document = obj("title" -> "Article 1")
+        val (_, body) = POST(document) to "/article"
+
+        body is obj(
+          "id" -> "article_1-2"
+        )
       }
 
       "It's also possible to remove all documents" - example {

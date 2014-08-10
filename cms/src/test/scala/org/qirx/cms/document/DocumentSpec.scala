@@ -210,6 +210,7 @@ object DocumentSpec extends Specification {
   "id stuff" - {
     "create a safe method to reserve id's" - {}
     "make sure id references are per meta.id" - {}
+    "can not be empty" - {}
   }
   
   "Documents" - {

@@ -5,31 +5,10 @@ import org.qirx.cms.construction.Branch
 
 trait BranchEnhancements {
 
-  /*
-  trait BranchType[A, B] {
-    type Result
-    def createResultFrom(value:Either[A, B]):Result
-  }
-  trait LowerPriorityBranchType {
-    def branched[A, B] = new BranchType[A, B] {
-      type Result = Branch[B]#T[A]
-      def createResultFrom(value:Either[A, B]):Result = 
-        Branch[B].Instance(value)
-    }
-  }
-  object LiftType extends LowerPriorityBranchType {
-    def same[A] = new BranchType[A, A] {
-      type Result = A
-      def createResultFrom(value:Either[A, A]):Result = 
-        value.merge
-    }
-  }
-  */
-  
   private type Lift[F[_], B] = Branch[B]#T ~> F
 
   def branch[F[_], A, B, O[_]](p1: Program[F, A], p2: => Program[F, B])(
-    stayLeft: A => Boolean)(implicit l:Lift[F, B]): Program[F, A] = {
+    stayLeft: A => Boolean)(implicit l: Lift[F, B]): Program[F, A] = {
     val value: Program[F, Either[A, B]] =
       p1.flatMap {
         case a if stayLeft(a) => Apply(Left(a))
@@ -42,10 +21,10 @@ trait BranchEnhancements {
     implicit p: ProgramType[F],
     asBooleanProgram: P => Program[F, Boolean]) {
 
-    def ifFalse[B](program2: => Program[F, B])(implicit l:Lift[F, B]) =
+    def ifFalse[B](program2: => Program[F, B])(implicit l: Lift[F, B]) =
       branch(program1, program2)(stayLeft = identity)
 
-    def ifTrue[B](program2: => Program[F, B])(implicit l:Lift[F, B]) =
+    def ifTrue[B](program2: => Program[F, B])(implicit l: Lift[F, B]) =
       branch(program1, program2)(stayLeft = !_)
   }
 
@@ -54,12 +33,12 @@ trait BranchEnhancements {
     asOptionProgram: P => Program[F, O],
     isOption: O => Option[A]) {
 
-    def ifNone[B](program2: => Program[F, B])(implicit l:Lift[F, B]) =
+    def ifNone[B](program2: => Program[F, B])(implicit l: Lift[F, B]) =
       for {
         result <- branch(program1, program2)(stayLeft = _.isDefined)
       } yield result.get
 
-    def ifSome[B](program2: => Program[F, B])(implicit l:Lift[F, B]) =
+    def ifSome[B](program2: => Program[F, B])(implicit l: Lift[F, B]) =
       for {
         result <- branch(program1, program2)(stayLeft = _.isEmpty)
       } yield result
@@ -70,10 +49,35 @@ trait BranchEnhancements {
     asIterableProgram: P => Program[F, I],
     isIterable: I => Iterable[A]) {
 
-    def ifNonEmpty[B](program2: => Program[F, B])(implicit l:Lift[F, B]) =
+    def ifNonEmpty[B](program2: => Program[F, B])(implicit l: Lift[F, B]) =
       branch(program1, program2)(stayLeft = _.isEmpty)
 
-    def ifEmpty[B](program2: => Program[F, B])(implicit l:Lift[F, B]) =
+    def ifEmpty[B](program2: => Program[F, B])(implicit l: Lift[F, B]) =
       branch(program1, program2)(stayLeft = _.nonEmpty)
+  }
+
+  /**
+   * It is now required that the branch is located at the head of the Coproduct.
+   * Theoretically we could write a transformation that moves the branch to the 
+   * front of the Coproduct or alternatively a way where it does not matter 
+   * where the branch is located.  
+   */
+  implicit class CoproductWithBranchEnhancements[F[_], A, In[_], Out[_]](
+    free: Free[In, A])(implicit withBranchAtHead: In ~> Co[Branch[A]#T, Out]#T) {
+
+    def mergeBranch: Free[Out, A] =
+      free match {
+        case Apply(a) => Apply(a)
+        case x @ FlatMap(fa, f) =>
+          withBranchAtHead(fa).value match {
+            case Left(branch) =>
+              branch.value match {
+                case Left(any) => f(any).mergeBranch
+                case Right(t) => Apply(t)
+              }
+            case Right(withoutBranch) =>
+              Free(withoutBranch).flatMap(f andThen (_.mergeBranch))
+          }
+      }
   }
 }

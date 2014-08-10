@@ -34,8 +34,7 @@ class PublicApi(
   def handleRequest(pathSegments: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathSegments)
-    val branched = program.foldMap(runner)
-    branched.value.map(_.value.merge)
+    program.mergeBranch.foldMap(runner)
   }
 
   private type Elements = ProgramType[(Base + Index + Store + Metadata + Branch[Result]#T)#T]
@@ -71,12 +70,9 @@ class PublicApi(
     } yield searchResult
 
   private lazy val runner = {
-    val branchRunner = BranchToFuture
-    val systemRunner = SystemRunner andThen IdToBranch andThen BranchToFuture
-    val metadataRunner = metadata andThen IdToBranch andThen BranchToFuture
-    val indexRunner = index andThen FutureToFutureBranch
-    val storeRunner = store andThen FutureToFutureBranch
+    val systemRunner = SystemRunner andThen IdToFuture
+    val metadataRunner = metadata andThen IdToFuture
 
-    indexRunner or storeRunner or systemRunner or metadataRunner or branchRunner
+    index or store or systemRunner or metadataRunner
   }
 }

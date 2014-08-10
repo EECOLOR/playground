@@ -11,7 +11,7 @@ import scala.collection.immutable.ListMap
 
 object Document {
   def apply(id: String, idField: String)(properties: (String, PropertyMetadata)*): DocumentMetadata =
-    DefaultDocument(id, idField, ListMap(properties:_*))
+    DefaultDocument(id, idField, ListMap(properties: _*))
 
   private case class DefaultDocument(
     id: String,
@@ -32,7 +32,15 @@ object Document {
 
           lowerCase.replaceAll(" ", "_")
         }
-        def makeUnique(id: String): String = id + "1"
+
+        val WithUniqueId = """(.+)-(\d+)""".r
+
+        def makeUnique(id: String): String =
+          id match {
+            case WithUniqueId(originalId, counter) =>
+              originalId + "-" + (counter.toInt + 1)
+            case id => id + "-1"
+          }
       }
 
     def withEvolutions(evolutions: Evolution*) =

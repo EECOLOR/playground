@@ -44,7 +44,7 @@ object Coproduct {
     implicit def notIdentity[F[_]]: IsNotIdentity[F] = null
   }
 
-  trait Transformations {
+  trait LP {
     implicit def none[Elem[_]](
       implicit ev: IsNotIdentity[Elem]) =
       new (Elem ~> Elem) {
@@ -68,11 +68,15 @@ object Coproduct {
           new (Head :: Tail).Product(Right(transformTail(elem)))
       }
 
-    implicit def elemIsCoProduct[Elem[_], Tail[_], Target[_]](
-      implicit ev: IsNotCoproduct[Elem],
-      transformHead: Elem ~> Target,
+  }
+  
+  trait Transformations extends LP {
+    
+    implicit def isCoProduct[Head[_], Tail[_], Target[_]](
+      implicit ev: IsNotCoproduct[Head],
+      transformHead: Head ~> Target,
       transformTail: Tail ~> Target) =
-      new ((Elem :: Tail)#T ~> Target) {
+      new ((Head :: Tail)#T ~> Target) {
         def transform[x] =
           _.value match {
             case Left(head) => transformHead(head)
@@ -81,7 +85,16 @@ object Coproduct {
       }
 
     implicit def transformSource[F[_], Target[_], G[_]](fToTarget: F ~> Target)(
-      implicit gToF: G ~> F) = gToF andThen fToTarget
+      implicit gToF: G ~> F): G ~> Target = gToF andThen fToTarget
+
+    /*
+    implicit def transformTarget[F[_], Source[_], G[_]](
+      implicit fToG: F ~> G) =
+      (sourceToF: Source ~> F) =>
+        new (Source ~> G) {
+          def apply[x](source: Source[x]) = fToG(sourceToF(source))
+        }
+    */
 
   }
 }
