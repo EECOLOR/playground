@@ -24,6 +24,7 @@ import testUtils.TestApplication
 import play.api.libs.json.JsValue
 import testUtils.PostToApplication
 import testUtils.TestIndex
+import testUtils.GetFromApplication
 
 object _05_Evolution extends Specification with Example {
 
@@ -39,9 +40,9 @@ object _05_Evolution extends Specification with Example {
      |the best performing solution, but it is the easiest implementation.
      |
      |The metadata is available as Scala code. This means we have no way of 
-     |detecting if it has changed. So in order to detect change we check 
-     |the metadata against all documents as soon as an instance of the 
-     |`$cmsName` is being created.""".stripMargin - {
+     |detecting if it has changed. So in order to make sure everything is still
+     |good, we validate all the documents in the store as soon as an instance of
+     |the `$cmsName` is being created.""".stripMargin - {
 
     val pathPrefix = "/api"
     val authenticate: RequestHeader => Future[Boolean] = { _ => Future.successful(true) }
@@ -89,7 +90,7 @@ object _05_Evolution extends Specification with Example {
        |documents invalid. Since we are checking stuff runtime we need some way 
        |to report this problem. Of course we need to try and prevent that from 
        |happening, but since we are human, we need to get notified in case we
-       |make a mistake. More on preventing mistakes in later in this document.
+       |make a mistake.
        |
        |Note that a method in the `Environment` is used to report the error.
        |
@@ -148,16 +149,18 @@ object _05_Evolution extends Specification with Example {
        |serve them to our application. The simplest thing we can do is provide a 
        |way for the store to make an invalid instances valid.
        |
-       |A naive way to do this is to just create a store that transforms the 
-       |document to the new structure. For simple evolutions this works, but for 
-       |more complex evolutions problems arise. Consider a document that starts
-       |out with a `header` property, this property then changes to `title`. 
-       |At a later time the `header` property is reintroduced, the document now
-       |should have both a `header` and a `title` property.
+       |A naive way to do this is to just create a store that automatically, based 
+       |on the document metadata, transforms the document to the new structure. 
+       |For simple evolutions this works, but for more complex evolutions problems 
+       |arise.
+       |
+       |Consider a document that starts out with a `header` property, this property 
+       |then changes to `title`. At a later time the `header` property is 
+       |reintroduced, the document now should have both a `header` and a `title` property.
        |
        |In the above example it's quite tricky to determine what transformations 
-       |need to be applied from the document itself. For this reason we introduced
-       |version numbers and explicit evolutions that will be applied.""".stripMargin - {
+       |need to be applied from the document metadata itself. For this reason we 
+       |introduced version numbers and explicit evolutions that will be applied.""".stripMargin - {
 
       val reports = ListBuffer.empty[(JsObject, DocumentMetadata, Seq[JsObject])]
       val testEnvironment =
@@ -171,7 +174,7 @@ object _05_Evolution extends Specification with Example {
           }
         }
 
-      example {
+      new ExampleContainer {
         def renameHeaderToTitle(document: JsObject): JsObject = {
           val header = (document \ "header").as[JsValue]
           document - "header" + ("title" -> header)
@@ -184,17 +187,64 @@ object _05_Evolution extends Specification with Example {
               1 -> renameHeaderToTitle
             )
 
-        Helpers.running(testApplication) {
+        lazy val cms =
           new Cms(pathPrefix, authenticate,
             environment = testEnvironment,
             documents = Seq(newDocumentMetadata)
           )
-        }
+
+        Helpers.running(testApplication)(cms)
 
         reports is Seq.empty
+      }.withSpecification { body =>
+        val cms = body.cms
+
+        val GET = new GetFromApplication(TestApplication(cms), pathPrefix)
+
+        """|As you can see, the previously saved document will be retrieved with the
+           |new properties.""".stripMargin - example {
+          val (_, body) = GET from "/private/article"
+
+          body is arr(
+            obj(
+              "id" -> "article_1",
+              "title" -> "Article 1"
+            )
+          )
+        }
+
+        "Retrieving the document directly will yield the same result" - example {
+          val (_, body) = GET from "/private/article/article_1"
+
+          body is obj(
+            "id" -> "article_1",
+            "title" -> "Article 1"
+          )
+        }
+
+        """|The evolutions are implemented as a layer between the actual store and
+           |the API. It transforms documents before they are served through the API.
+           |
+           |The consequence of this simple strategy is that the index might still 
+           |contain old documents. We can not use this strategy for the index 
+           |because the `$cmsName` does not handle `search` itself.
+           |
+           |In order to make sure the index is up to date with all evolutions, all 
+           |of the documents are re-indexed when the `$cmsName` is instantiated.
+           |
+           |This means we can retrieve the documents from the index as expected.""".stripMargin -
+          example {
+            val (_, body) = GET from "/public/article"
+
+            body is arr(
+              obj(
+                "id" -> "article_1",
+                "title" -> "Article 1"
+              )
+            )
+          }
       }
+
     }
-       
-       "update the index" - {}
   }
 }

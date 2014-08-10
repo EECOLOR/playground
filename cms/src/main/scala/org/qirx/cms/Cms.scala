@@ -5,7 +5,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.language.higherKinds
 import scala.language.implicitConversions
-
 import org.qirx.cms.api.Api
 import org.qirx.cms.api.MetadataApi
 import org.qirx.cms.api.NoApi
@@ -16,13 +15,13 @@ import org.qirx.cms.execution.DocumentValidator
 import org.qirx.cms.execution.EvolvingStore
 import org.qirx.cms.execution.MetadataRunner
 import org.qirx.cms.metadata.DocumentMetadata
-
 import play.api.http.Status
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.mvc.Action
 import play.api.mvc.Handler
 import play.api.mvc.RequestHeader
 import play.api.mvc.Results
+import org.qirx.cms.execution.DocumentIndexer
 
 class Cms(
   pathPrefix: String,
@@ -39,7 +38,8 @@ class Cms(
   private val authentication = new AuthenticationRunner(authenticate)
 
   validateExistingDocuments()
-
+  reindexExistingDocuments()
+  
   def handle(request: RequestHeader, orElse: RequestHeader => Option[Handler]) =
     if (request.path startsWith pathPrefix) Some(handleRequest)
     else orElse apply request
@@ -82,5 +82,14 @@ class Cms(
         environment.reportDocumentMetadataMismatch(document, meta, result)
       case _ => // nothing to report
     }
+  }
+  
+  private def reindexExistingDocuments() = {
+    val indexer = new DocumentIndexer(documents, store, index)
+    /*
+     * Using await here because we want the documents to be indexed
+     * before the CMS is started
+     */
+    Await.result(indexer.index(), 60.seconds)
   }
 }
