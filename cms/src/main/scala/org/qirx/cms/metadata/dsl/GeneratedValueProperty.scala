@@ -15,6 +15,8 @@ trait GeneratableValue { self: PropertyMetadata =>
 class GeneratedValueProperty(property: PropertyMetadata with GeneratableValue)
   extends WrappedProperty(property) with PropertyValidation {
  
+  //def once:GeneratedValueProperty = ???
+  
   val generator = Some {() => 
     val generatedValue = property.generate
     

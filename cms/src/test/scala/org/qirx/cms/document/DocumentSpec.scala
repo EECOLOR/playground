@@ -207,11 +207,15 @@ object DocumentSpec extends Specification {
   
   "in the store do not delete and save the element, but atomically update the id" - {}
   
+  "reserved property names" - {}
+  
   "id stuff" - {
     "create a safe method to reserve id's" - {}
     "make sure id references are per meta.id" - {}
     "can not be empty" - {}
   }
+  
+  "Think again about the endpoint names, they can be improved" - {}
   
   "Documents" - {
 

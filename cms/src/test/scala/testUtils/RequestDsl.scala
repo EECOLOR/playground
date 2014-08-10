@@ -67,16 +67,24 @@ abstract class ToApplicationWithBody(
   def apply(path: String) = new WithUsing(path)
 }
 
-abstract class FromApplication(
-  method: String,
+class WithHeader(
   val application: Application,
-  pathPrefix: String) extends RouteRequest {
+  method: String,
+  pathPrefix: String,
+  header: Option[(String, String)] = None) extends RouteRequest {
 
   def from(path: String) = {
     val request = FakeRequest(method, pathPrefix + path)
     import Helpers._
     routeRequest(request)
   }
+}
+
+abstract class FromApplication(method: String, application: Application, pathPrefix: String)
+  extends WithHeader(application, method, pathPrefix) {
+
+  def withHeader(header: (String, String)) =
+    new WithHeader(application, method, pathPrefix, Some(header))
 }
 
 class PostToApplication(app: Application, pathPrefix: String = "")
@@ -91,5 +99,5 @@ class PatchToApplication(app: Application, pathPrefix: String = "")
 class GetFromApplication(app: Application, pathPrefix: String = "")
   extends FromApplication("GET", app, pathPrefix)
 
-class DeleteFromApplication(app:Application, pathPrefix:String = "")
+class DeleteFromApplication(app: Application, pathPrefix: String = "")
   extends FromApplication("DELETE", app, pathPrefix)

@@ -18,6 +18,8 @@ trait ApiExampleSpecification extends Example { self: Specification =>
 
     val pathPrefix = "/api"
 
+    "Use this metadata definition in 'Getting Started' as well" - {}
+    
     val cms = codeString {
       new Cms(
         pathPrefix = "/api",

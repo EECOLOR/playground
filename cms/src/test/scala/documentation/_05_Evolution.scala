@@ -1,30 +1,27 @@
 package documentation
 
-import scala.concurrent.Future
-import org.qirx.cms.Cms
-import org.qirx.littlespec.Specification
-import play.api.mvc.RequestHeader
-import testUtils.Example
-import testUtils.TestStore
-import org.qirx.cms.metadata.properties.Label
-import org.qirx.cms.metadata.dsl.Document
-import testUtils.TestEnvironment
-import org.qirx.cms.construction.Store.Save
-import play.api.libs.json.Json.obj
-import play.api.libs.json.Json.arr
-import play.api.libs.json.__
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import org.qirx.cms.Environment
 import scala.collection.mutable.ListBuffer
-import play.api.libs.json.JsObject
+import scala.concurrent.Future
+
+import org.qirx.cms.Cms
+import org.qirx.cms.Environment
 import org.qirx.cms.metadata.DocumentMetadata
-import play.api.test.Helpers
-import testUtils.TestApplication
+import org.qirx.cms.metadata.dsl.Document
+import org.qirx.cms.metadata.properties.Label
+import org.qirx.littlespec.Specification
+
+import play.api.libs.json.JsObject
 import play.api.libs.json.JsValue
-import testUtils.PostToApplication
-import testUtils.TestIndex
+import play.api.libs.json.Json.arr
+import play.api.libs.json.Json.obj
+import play.api.mvc.RequestHeader
+import play.api.test.Helpers
+import testUtils.Example
 import testUtils.GetFromApplication
+import testUtils.PostToApplication
+import testUtils.TestApplication
+import testUtils.TestIndex
+import testUtils.TestStore
 
 object _05_Evolution extends Specification with Example {
 
@@ -53,8 +50,7 @@ object _05_Evolution extends Specification with Example {
       new Environment {
         val store = testStore
         val index = testIndex
-        def reportDocumentMetadataMismatch(document: JsObject, meta: DocumentMetadata, validationResults: Seq[JsObject]): Unit =
-          ???
+        def reportDocumentMetadataMismatch(document: JsObject, meta: DocumentMetadata, validationResults: Seq[JsObject]): Unit = ???
       }
 
     val documentMetadata = codeString {
@@ -244,7 +240,6 @@ object _05_Evolution extends Specification with Example {
             )
           }
       }
-
     }
   }
 }

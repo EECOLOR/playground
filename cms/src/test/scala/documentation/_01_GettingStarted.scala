@@ -26,7 +26,6 @@ import testUtils.TestStore
 import testUtils.TestEnvironment
 import testUtils.withFixedDateTime
 
-
 object _01_GettingStarted extends Specification with Example {
 
   s"""|#Getting started
@@ -59,7 +58,7 @@ object _01_GettingStarted extends Specification with Example {
             "body" -> RichContent.?,
             "tags" -> Tag.*,
             "date" -> Date.generated,
-            "publishDate" -> Date.? 
+            "publishDate" -> Date.?
           )
         )
       )
@@ -108,7 +107,7 @@ object _01_GettingStarted extends Specification with Example {
 
             val (status, body) = withFixedDateTime {
               POST(article) withHeader auth to "/api/private/article"
-            } 
+            }
 
             body is obj(
               "id" -> "article_1"
@@ -163,51 +162,52 @@ object _01_GettingStarted extends Specification with Example {
         s"""|${moreInformation[_04_MetadataApi]}
             |
             |This part of the API allows you to retrieve the metadata of documents,
-            |it does not require authentication and is read-only.""".stripMargin - {
+            |because it can contain sensitive information it requires 
+            |authentication. If you need it to be publicly available, just do 
+            |some smart stuff in you authenticate method.""".stripMargin - {
 
           example {
-            val (status, body) = GET from "/api/metadata/article"
+            val auth = "X-Qirx-Authenticate" -> "let me in"
+
+            val (status, body) = GET withHeader auth from "/api/metadata/documents/article"
 
             status is 200
-            body is arr(
-              obj(
-                "id" -> "article",
-                "properties" -> arr(
-                  obj(
-                    "id" -> "label",
-                    "name" -> "title"
-                  ),
-                  obj(
-                    "id" -> "label",
-                    "name" -> "secret"
-                  ),
-                  obj(
-                    "id" -> "rich_content",
-                    "name" -> "body",
-                    "optional" -> true,
-                    "extra" -> obj(
-                      "allowedElements" -> arr(
-                        "strong", "em", "ul", "ol", "li", "span[class|lang]",
-                        "a[href|hreflang|title|target]", "br", "p[class|lang]")
-                    )
-                  ),
-                  obj(
-                    "id" -> "tag",
-                    "name" -> "tags",
-                    "set" -> true,
-                    "nonEmpty" -> false
-                  ),
-                  obj(
-                    "id" -> "date",
-                    "name" -> "date",
-                    "generated" -> true
+            body is obj(
+              "id" -> "article",
+              "properties" -> arr(
+                obj(
+                  "id" -> "label",
+                  "name" -> "title"
+                ),
+                obj(
+                  "id" -> "label",
+                  "name" -> "secret"
+                ),
+                obj(
+                  "id" -> "rich_content",
+                  "name" -> "body",
+                  "optional" -> true,
+                  "extra" -> obj(
+                    "allowedElements" -> arr(
+                      "strong", "em", "ul", "ol", "li", "span[class|lang]",
+                      "a[href|hreflang|title|target]", "br", "p[class|lang]")
                   )
+                ),
+                obj(
+                  "id" -> "tag",
+                  "name" -> "tags",
+                  "set" -> true,
+                  "nonEmpty" -> false
+                ),
+                obj(
+                  "id" -> "date",
+                  "name" -> "date",
+                  "generated" -> true
                 )
               )
             )
           }
         }
-
       }
     }
 }

@@ -1,5 +1,5 @@
 package documentation
 
-class _04_MetadataApi {
+object _06_02_Index {
 
 }
