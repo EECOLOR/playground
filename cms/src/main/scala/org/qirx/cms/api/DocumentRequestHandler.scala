@@ -15,16 +15,12 @@ import org.qirx.cms.construction.Store.SaveIdReference
 import org.qirx.cms.construction.System
 import org.qirx.cms.construction.Validate
 import org.qirx.cms.construction.api.AddId
-import org.qirx.cms.construction.api.DocumentCreatedResult
-import org.qirx.cms.construction.api.DocumentResult
-import org.qirx.cms.construction.api.DocumentsResult
 import org.qirx.cms.construction.api.ExtractId
 import org.qirx.cms.construction.api.GetFieldSetFromQueryString
 import org.qirx.cms.construction.api.GetNextSegment
 import org.qirx.cms.construction.api.Merge
 import org.qirx.cms.construction.api.ToJsObject
 import org.qirx.cms.construction.api.ToJsValue
-import org.qirx.cms.construction.api.ValitationResultsToResult
 import org.qirx.cms.machinery.BuildTools._
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.{ ~> => ~> }
@@ -45,6 +41,7 @@ import org.qirx.cms.execution.SystemRunner
 import org.qirx.cms.machinery.FlatMap
 import org.qirx.cms.construction.AddGeneratedProperties
 import org.qirx.cms.construction.api.GetFieldsFrom
+import org.qirx.cms.construction.Store.GetActualId
 
 /**
  * The implicit parameters are used to make sure we have the correct
@@ -74,14 +71,12 @@ class DocumentRequestHandler[O[_]](
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       document <- Get(meta.id, id, fieldSet) ifNone Return(notFound)
-      result <- DocumentResult(document)
-    } yield result
+    } yield ok(document)
 
   private def list(fieldSet: Set[String]) =
     for {
       documents <- List(meta.id, fieldSet)
-      result <- DocumentsResult(documents)
-    } yield result
+    } yield ok(documents)
 
   def post =
     for {
@@ -90,60 +85,58 @@ class DocumentRequestHandler[O[_]](
       document <- ToJsObject(json) ifNone Return(jsonExpected)
       messages <- GetMessages(meta)
       results <- Validate(meta, document, messages) ifEmpty postDocument(document)
-      result <- ValitationResultsToResult(results)
-    } yield result
+    } yield valitationResultsToResult(results)
 
   private def postDocument(document: JsObject) = {
-    val id = meta.idGenerator.generateFor(document)
+    val id = generateIdFor(document)
     for {
       uniqueId <- getUniqueId(id)
       documentWithId <- AddId(document, uniqueId)
       fullDocument <- AddGeneratedProperties(meta, documentWithId)
       _ <- save(uniqueId, fullDocument)
-      result <- DocumentCreatedResult(uniqueId)
-    } yield result
+    } yield created(uniqueId)
   }
 
   def put =
     for {
-      (id, document) <- extractIdAndDocumentFromRequest
-      _ <- Exists(meta.id, id) ifFalse Return(notFound)
-      documentWithId <- AddId(document, id)
+      (requestId, document) <- extractIdAndDocumentFromRequest
+      id <- GetActualId(meta.id, requestId) ifNone Return(notFound)
       messages <- GetMessages(meta)
-      results <- Validate(meta, documentWithId, messages) ifEmpty putDocument(id, documentWithId)
-      result <- ValitationResultsToResult(results)
-    } yield result
+      results <- Validate(meta, document, messages) ifEmpty putDocument(id, document)
+    } yield valitationResultsToResult(results)
 
   private def putDocument(id: String, document: JsObject) =
     for {
       fullDocument <- AddGeneratedProperties(meta, document)
-      newId <- ExtractId(fullDocument)
-      _ <- ValueOf(newId == id) ifFalse saveWithNewId(id, newId, fullDocument)
-      _ <- save(id, fullDocument)
+      generatedId <- ValueOf(generateIdFor(fullDocument))
+      documentWithId <- AddId(fullDocument, generatedId)
+      _ <- ValueOf(id == generatedId) ifFalse saveWithNewId(id, generatedId, documentWithId)
+      _ <- save(id, documentWithId)
     } yield noContent
 
   def patch =
     for {
-      (id, newDocument) <- extractIdAndDocumentFromRequest
+      (requestId, newDocument) <- extractIdAndDocumentFromRequest
+      id <- GetActualId(meta.id, requestId) ifNone Return(notFound)
       oldDocument <- Get(meta.id, id, Set.empty) ifNone Return(notFound)
-      merged <- Merge(oldDocument, newDocument)
       fields <- GetFieldsFrom(newDocument)
+      merged <- Merge(oldDocument, newDocument)
       messages <- GetMessages(meta)
       results <- Validate(meta, merged, messages, fields) ifEmpty patchDocument(id, merged)
-      result <- ValitationResultsToResult(results)
-    } yield result
+    } yield valitationResultsToResult(results)
 
   private def patchDocument(id: String, document: JsObject) =
     for {
-      newId <- ExtractId(document)
-      _ <- ValueOf(newId == id) ifFalse saveWithNewId(id, newId, document)
+      generatedId <- ValueOf(generateIdFor(document))
+      documentWithId <- AddId(document, generatedId)
+      _ <- ValueOf(id == generatedId) ifFalse saveWithNewId(id, generatedId, document)
       _ <- save(id, document)
     } yield noContent
 
   def delete =
     for {
-      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
-      _ <- Exists(meta.id, id) ifFalse Return(notFound)
+      (requestId, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
+      id <- GetActualId(meta.id, requestId) ifNone Return(notFound)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       _ <- Delete(meta.id, Some(id))
       _ <- Index.Delete(meta.id, Some(id))
@@ -155,7 +148,9 @@ class DocumentRequestHandler[O[_]](
       _ <- putInIndex(id, document)
     } yield ()
 
-  private val makeUnique = meta.idGenerator.makeUnique _
+  private val makeIdUnique = meta.idGenerator.makeUnique _
+
+  private val generateIdFor = meta.idGenerator.generateFor _
 
   private def getUniqueId(id: String) = {
     val withBranch = uniqueIdProgram(id)
@@ -167,7 +162,7 @@ class DocumentRequestHandler[O[_]](
     implicit e: ProgramType[(Base + Store + Branch[String]#T)#T]): Free[e.Result, String] = {
     for {
       _ <- Exists(meta.id, id) ifFalse ValueOf(id)
-      uniqueId <- uniqueIdProgram(makeUnique(id))
+      uniqueId <- uniqueIdProgram(makeIdUnique(id))
     } yield uniqueId
   }
 
@@ -182,7 +177,7 @@ class DocumentRequestHandler[O[_]](
       json <- ToJsValue(request) ifNone Return(badRequest)
       document <- ToJsObject(json) ifNone Return(jsonExpected)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone Return(notFound)
-      _ <- Return(pathAfterId) ifNonEmpty Return(notFound)
+      _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
     } yield (id, document)
 
   private def saveWithNewId(oldId: String, newId: String, document: JsObject) =
@@ -191,7 +186,7 @@ class DocumentRequestHandler[O[_]](
       _ <- save(newId, document)
       _ <- Delete(meta.id, Some(oldId))
       _ <- Index.Delete(meta.id, Some(oldId))
-    } yield noContent
+    } yield ok(idObj(newId))
 
   private def putInIndex(id: String, document: JsObject) =
     for {

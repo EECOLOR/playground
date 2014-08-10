@@ -108,7 +108,7 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      "The article can now be retrieved, note that it generated the date" - {
+      "The article can now be retrieved, note that it generated the id and date" - {
         val (status, body) = GET from "/article"
 
         status is 200
@@ -156,6 +156,16 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
+      "You can retrieve a single document by specifying it's id" - example {
+        val (status, body) = GET from "/article/article_1?fields=id,title"
+
+        status is 200
+        body is obj(
+          "id" -> "article_1",
+          "title" -> "Article 1"
+        )
+      }
+
       "Let's create another article" - example {
         val article = obj(
           "title" -> "Article 3",
@@ -170,34 +180,27 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
-      "You can retrieve a single document by specifying it's id" - example {
-        val (status, body) = GET from "/article/article_1?fields=id,title"
-
-        status is 200
-        body is obj(
-          "id" -> "article_1",
-          "title" -> "Article 1"
-        )
-      }
-
       """|As you may have noticed, I accidentally created an article with 
-         |the wrong title, let's fix that""".stripMargin - example {
+         |the wrong title, let's fix that. As you can see in the result 
+         |below, the id has also been changed. More on this later on.""".stripMargin - example {
         val article = obj(
           "title" -> "Article 2"
         )
 
         val (status, body) = withFixedDateTime {
           PUT(article) at "/article/article_3"
-        } 
-        status is 204
-        body is null
+        }
+        status is 200
+        body is obj(
+          "id" -> "article_2"
+        )
       }
 
-      "Note that the article is overwritten" - {
+      "Note that the article is overwritten" - example {
         val (status, body) = GET from "/article/article_3"
         status is 200
         body is obj(
-          "id" -> "article_3",
+          "id" -> "article_2",
           "title" -> "Article 2",
           "date" -> "2011-07-10T20:39:21+02:00"
         )
@@ -208,18 +211,16 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "tags" -> arr("tag1", "tag3")
         )
 
-        val (status, body) = withFixedDateTime {
-          PATCH("/article/article_3") using withTags
-        } 
+        val (status, body) = PATCH("/article/article_2") using withTags
         status is 204
         body is null
       }
 
       "As you can see the result is tags being added" - example {
-        val (status, body) = GET from "/article/article_3"
+        val (status, body) = GET from "/article/article_2"
         status is 200
         body is obj(
-          "id" -> "article_3",
+          "id" -> "article_2",
           "title" -> "Article 2",
           "tags" -> arr("tag1", "tag3"),
           "date" -> "2011-07-10T20:39:21+02:00"
@@ -227,21 +228,16 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
 
       }
 
-      "It's also possible to update the id." - example {
-        val newId = obj("id" -> "article_2")
-
-        PATCH("/article/article_3") using newId
-
-        val (status, body) = GET from "/article/article_2?fields=id,title"
-        status is 200
-        body is obj(
-          "id" -> "article_2",
-          "title" -> "Article 2"
-        )
-      }
-
-      """|The old id might already be stored somewhere so we can still 
-         |retrieve the new document with it's old id.""".stripMargin - example {
+      """"|It's not possible to update the id directly. You might have notived
+          |that the id is derived from the document. So in order to change it, 
+          |we need to update content in the document. With the current metadata 
+          |we should update the `title` field as we have marked it as the 
+          |`idField`
+          |
+          |If you would scroll up, you could see at one point in time this 
+          |document had another id. The old id might already be stored somewhere 
+          |so it's important we can still retrieve the new document by it's old 
+          |id.""".stripMargin - example {
         val (status, body) = GET from "/article/article_3?fields=id,title"
 
         status is 200
@@ -286,6 +282,32 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
 
         body is obj(
           "id" -> "article_1-2"
+        )
+      }
+
+      """|If you patch the document and it has impact on the id, the id will be
+         |updated""".stripMargin - example {
+        val newTitle = obj("title" -> "Article X")
+        val (status, body) = PATCH("/article/article_1") using newTitle
+
+        status is 200
+        body is obj(
+          "id" -> "article_x"
+        )
+      }
+
+      "It can now be retrieved using it's new id" - example {
+        val (status, _) = GET from "/article/article_x"
+        status is 200
+      }
+
+      "This same effect happens when you are performing a put" - {
+        val newTitle = obj("title" -> "Article Y")
+        val (status, body) = PUT(newTitle) at "/article/article_x"
+
+        status is 200
+        body is obj(
+          "id" -> "article_y"
         )
       }
 

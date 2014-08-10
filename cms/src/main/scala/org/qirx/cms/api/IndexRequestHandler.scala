@@ -21,8 +21,6 @@ import org.qirx.cms.construction.api.GetFieldSetFromQueryString
 import org.qirx.cms.construction.api.GetNextSegment
 import play.api.libs.json.JsObject
 import org.qirx.cms.machinery.BuildTools._
-import org.qirx.cms.construction.api.DocumentsResult
-import org.qirx.cms.construction.api.DocumentResult
 import org.qirx.cms.construction.RemoveConfidentialProperties
 
 
@@ -41,14 +39,12 @@ class IndexRequestHandler[O[_]](meta: DocumentMetadata,
       fieldSet <- GetFieldSetFromQueryString(request.queryString)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
-      actualId <- Store.GetActualId(meta.id, id)
+      actualId <- Store.GetActualId(meta.id, id) ifNone Return(notFound)
       document <- Get(meta.id, actualId, fieldSet) ifNone Return(notFound)
-      result <- DocumentResult(document)
-    } yield result
+    } yield ok(document)
 
   private def list(fieldSet: Set[String]) =
     for {
       documents <- List(meta.id, fieldSet)
-      result <- DocumentsResult(documents)
-    } yield result
+    } yield ok(documents)
 }

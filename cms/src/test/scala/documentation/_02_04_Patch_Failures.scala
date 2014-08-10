@@ -41,7 +41,8 @@ object _02_04_Patch_Failures extends Specification with ApiExampleSpecification 
         "title" -> 0,
         "body" -> "no json",
         "tags" -> "not an array",
-        "date" -> "is generated"
+        "date" -> "is generated",
+        "publishDate" -> "invalid date" 
       )
 
       val (status, body) = PATCH("/article/article_1") using article
@@ -69,6 +70,12 @@ object _02_04_Patch_Failures extends Specification with ApiExampleSpecification 
             "id" -> "date",
             "name" -> "date",
             "error" -> "generated"
+          ),
+          obj(
+            "id" -> "date",
+            "name" -> "publishDate",
+            "messageKey" -> "invalidDate",
+            "message" -> "The value `invalid date` is not a valid date"
           )
         )
       )
@@ -122,10 +129,6 @@ object _02_04_Patch_Failures extends Specification with ApiExampleSpecification 
         "status" -> 404,
         "error" -> "notFound"
       )
-    }
-    
-    "Invalid id update" - {
-      // when id is updated to an id that is already in use
     }
   }
 }

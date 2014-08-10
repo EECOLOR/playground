@@ -12,21 +12,23 @@ import org.qirx.cms.construction.Store._
 
 class TestStore extends (Store ~> Future) {
 
-  val storage = mutable.Map.empty[String, mutable.Map[String, JsObject]]
+  type Storage = mutable.Map[String, JsObject]
+  val storage = mutable.Map.empty[String, Storage]
 
   val idMappings = mutable.Map.empty[String, String]
 
-  def storeFor(metaId:String) = storage.getOrElseUpdate(metaId, mutable.LinkedHashMap.empty)
+  def storeFor(metaId: String) = storage.getOrElseUpdate(metaId, mutable.LinkedHashMap.empty)
 
-  def getActualId(id: String): String =
-        idMappings.get(id).map(getActualId).getOrElse(id)
-  
+  def getActualId(id: String)(implicit store:Storage): Option[String] =
+    if (store contains id) Some(id)
+    else idMappings.get(id).flatMap(getActualId)
+
   def transform[x] = {
     case Get(metaId, id, fieldSet) =>
       val store = storeFor(metaId)
 
-      val actualId = getActualId(id)
-      val obj = store.get(actualId)
+      val actualId = getActualId(id)(store)
+      val obj = actualId.flatMap(store.get)
       val filteredObj =
         if (fieldSet.isEmpty) obj
         else obj.map { obj =>
@@ -41,9 +43,9 @@ class TestStore extends (Store ~> Future) {
     case Exists(metaId, id) =>
       val store = storeFor(metaId)
       val exists = store.contains(id)
-      
+
       Future.successful(exists)
-      
+
     case Save(metaId, id, json) =>
       val store = storeFor(metaId)
       store += (id -> json)
@@ -52,16 +54,17 @@ class TestStore extends (Store ~> Future) {
 
     case SaveIdReference(metaId, id, newId) =>
       idMappings += (id -> newId)
-      
+
       Future.successful(())
-      
+
     case GetActualId(metaId, id) =>
-      Future.successful(getActualId(id))
-      
+      val store = storeFor(metaId)
+      Future.successful(getActualId(id)(store))
+
     case Delete(metaId, id) =>
       val store = storeFor(metaId)
       id.fold(ifEmpty = store.clear())(store -= _)
-      
+
       Future.successful(())
 
     case List(metaId, fields) =>
