@@ -1,11 +1,10 @@
 package org.qirx.cms.metadata.dsl
 
-import org.qirx.cms.metadata.PropertyMetadata
-import play.api.libs.json.JsValue
-import play.api.libs.json.JsObject
-import play.api.libs.json.Json.obj
 import org.qirx.cms.i18n.Messages
+
 import play.api.libs.json.JsArray
+import play.api.libs.json.JsObject
+import play.api.libs.json.JsValue
 
 trait Identifiable { self: Property =>
   private def set(nonEmpty: Boolean) = new ValueSetProperty(self, nonEmpty)
@@ -38,6 +37,4 @@ class ValueSetProperty(property: Property with Identifiable, nonEmpty: Boolean)
     if (errors.isEmpty) None
     else Some(errorObj(errors))
   }
-    
-    
 }

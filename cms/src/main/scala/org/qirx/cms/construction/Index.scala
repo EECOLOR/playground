@@ -1,9 +1,9 @@
 package org.qirx.cms.construction
 
 import play.api.libs.json.JsObject
-import play.api.mvc.Result
-import play.api.mvc.Request
 import play.api.mvc.AnyContent
+import play.api.mvc.Request
+import play.api.mvc.Result
 
 sealed trait Index[T]
 object Index {

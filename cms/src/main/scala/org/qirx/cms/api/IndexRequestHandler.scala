@@ -20,11 +20,11 @@ import org.qirx.cms.construction.ValueOf
 import org.qirx.cms.construction.api.GetFieldSetFromQueryString
 import org.qirx.cms.construction.api.GetNextSegment
 import play.api.libs.json.JsObject
-import org.qirx.cms.machinery.BuildTools._
+import org.qirx.cms.machinery.BuildTools
 import org.qirx.cms.construction.RemoveConfidentialProperties
 
-
-class IndexRequestHandler[O[_]](meta: DocumentMetadata,
+class IndexRequestHandler[O[_]](
+  meta: DocumentMetadata,
   request: Request[AnyContent],
   pathAtDocument: Seq[String])(
     implicit e: ProgramType[O],
@@ -34,17 +34,21 @@ class IndexRequestHandler[O[_]](meta: DocumentMetadata,
     e4: Metadata ~> O,
     e5: Branch[Result]#T ~> O) extends Results {
 
+  import BuildTools._
+
+  private val metaId = meta.id
+  
   def get =
     for {
       fieldSet <- GetFieldSetFromQueryString(request.queryString)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
-      actualId <- Store.GetActualId(meta.id, id) ifNone Return(notFound)
-      document <- Get(meta.id, actualId, fieldSet) ifNone Return(notFound)
+      actualId <- Store.GetActualId(metaId, id) ifNone Return(notFound)
+      document <- Index.Get(metaId, actualId, fieldSet) ifNone Return(notFound)
     } yield ok(document)
 
   private def list(fieldSet: Set[String]) =
     for {
-      documents <- List(meta.id, fieldSet)
+      documents <- Index.List(metaId, fieldSet)
     } yield ok(documents)
 }

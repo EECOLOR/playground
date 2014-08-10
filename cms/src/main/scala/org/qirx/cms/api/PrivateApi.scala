@@ -1,31 +1,36 @@
 package org.qirx.cms.api
 
-import play.api.mvc.Request
-import play.api.mvc.AnyContent
-import play.api.http.Status
-import play.api.mvc.Result
-import play.api.libs.json.JsObject
-import play.api.libs.json.Json.obj
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+
 import org.qirx.cms.construction.api._
 import org.qirx.cms.metadata.DocumentMetadata
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.construction._
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.Id
-import org.qirx.cms.execution.SystemRunner
+import org.qirx.cms.execution.SystemToId
 import org.qirx.cms.machinery.BuildTools
 import org.qirx.cms.machinery.ExecutionTools
 import org.qirx.cms.construction.Index
+import org.qirx.cms.construction.Authentication
+import org.qirx.cms.construction.Authenticate
+
+import play.api.mvc.Request
+import play.api.mvc.AnyContent
+import play.api.mvc.Result
 
 class PrivateApi(
   store: Store ~> Future,
   index: Index ~> Future,
   metadata: Metadata ~> Id,
   authentication: Authentication ~> Future)(
-    implicit val ec: ExecutionContext) extends Api with Results
-  with BuildTools with ExecutionTools {
+    implicit ec: ExecutionContext) extends Api {
+
+  import BuildTools._
+  import ExecutionTools._
+  import Results._
 
   def handleRequest(pathAtDocumentType: Seq[String], request: Request[AnyContent]) = {
 
@@ -42,7 +47,7 @@ class PrivateApi(
   private def programFor(request: Request[AnyContent], pathSegments: Seq[String])(implicit e: Elements) =
     for {
       _ <- Authenticate(request) ifFalse Return(forbidden)
-      method <- Return(validRequestMethod(request.method)) ifNone Return(methodNotAllowed)
+      method <- ValueOf(validRequestMethod(request.method)) ifNone Return(methodNotAllowed)
       (id, pathAtDocument) <- GetNextSegment(pathSegments) ifNone Return(notFound)
       meta <- GetDocumentMetadata(id) ifNone Return(notFound)
       handler = new DocumentRequestHandler(meta, request, pathAtDocument)
@@ -61,7 +66,7 @@ class PrivateApi(
   }
 
   private lazy val runner = {
-    val systemRunner = SystemRunner andThen IdToFuture
+    val systemRunner = SystemToId andThen IdToFuture
     val metadataRunner = metadata andThen IdToFuture
 
     store or index or authentication or systemRunner or metadataRunner

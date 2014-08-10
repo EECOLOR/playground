@@ -2,7 +2,6 @@ package org.qirx.cms.machinery
 
 import scala.language.implicitConversions
 import scala.language.higherKinds
-import org.qirx.cms.construction
 import org.qirx.cms.construction.System
 
 trait BuildTools extends BranchEnhancements with Coproduct.Transformations {

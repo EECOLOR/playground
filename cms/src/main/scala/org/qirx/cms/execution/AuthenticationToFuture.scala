@@ -8,7 +8,7 @@ import org.qirx.cms.machinery.~>
 
 import play.api.mvc.RequestHeader
 
-class AuthenticationRunner(authentication: RequestHeader => Future[Boolean])
+class AuthenticationToFuture(authentication: RequestHeader => Future[Boolean])
   extends (Authentication ~> Future) {
 
   def transform[x] = {

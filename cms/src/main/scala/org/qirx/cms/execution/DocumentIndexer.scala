@@ -1,26 +1,25 @@
 package org.qirx.cms.execution
 
-import org.qirx.cms.machinery.ExecutionTools
-import play.api.libs.json.JsObject
-import org.qirx.cms.machinery.ProgramType
-import org.qirx.cms.metadata.DocumentMetadata
 import scala.concurrent.ExecutionContext
-import org.qirx.cms.machinery.BuildTools
-import org.qirx.cms.machinery.~>
 import scala.concurrent.Future
-import org.qirx.cms.construction.GetMessages
-import org.qirx.cms.construction.Store
-import org.qirx.cms.construction.Metadata
-import org.qirx.cms.construction.Validate
+
 import org.qirx.cms.construction.Index
+import org.qirx.cms.construction.Store
 import org.qirx.cms.construction.api.ExtractId
-import org.qirx.cms.construction.Store.List
+import org.qirx.cms.machinery.BuildTools
+import org.qirx.cms.machinery.ExecutionTools
+import org.qirx.cms.machinery.ProgramType
+import org.qirx.cms.machinery.~>
+import org.qirx.cms.metadata.DocumentMetadata
 
 class DocumentIndexer(
     documents:Seq[DocumentMetadata], 
     store: Store ~> Future,
-    index:Index ~> Future)(implicit val ec: ExecutionContext) extends BuildTools with ExecutionTools {
+    index:Index ~> Future)(implicit ec: ExecutionContext) {
 
+  import BuildTools._
+  import ExecutionTools._
+  
   def index():Future[Seq[Unit]] = indexProgram.foldMap(runner)
   
   private type Elements = ProgramType[(Base + Store + Index + Seq)#T]
@@ -29,7 +28,7 @@ class DocumentIndexer(
     for {
       meta <- documents.asProgram
       _ <- Index.Delete(meta.id) 
-      documents <- List(meta.id, Set.empty)
+      documents <- Store.List(meta.id, Set.empty)
       document <- documents.asProgram
       id <- ExtractId(document)
       _ <- Index.Put(meta.id, id, document)
@@ -39,7 +38,7 @@ class DocumentIndexer(
     val seqRunner = SeqToFutureSeq
     val storeRunner = store andThen FutureToFutureSeq
     val indexRunner = index andThen FutureToFutureSeq
-    val systemRunner = SystemRunner andThen IdToFuture andThen FutureToFutureSeq
+    val systemRunner = SystemToId andThen IdToFuture andThen FutureToFutureSeq
 
     seqRunner or storeRunner or indexRunner or systemRunner
   }

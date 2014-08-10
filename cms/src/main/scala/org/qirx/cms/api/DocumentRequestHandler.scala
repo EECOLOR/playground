@@ -1,47 +1,20 @@
 package org.qirx.cms.api
 
 import scala.language.higherKinds
-import org.qirx.cms.construction.GetMessages
-import org.qirx.cms.construction.Metadata
-import org.qirx.cms.construction.Return
-import org.qirx.cms.construction.ValueOf
-import org.qirx.cms.construction.Store
-import org.qirx.cms.construction.Store.Delete
-import org.qirx.cms.construction.Store.Get
-import org.qirx.cms.construction.Store.List
-import org.qirx.cms.construction.Store.Save
-import org.qirx.cms.construction.Store.Exists
-import org.qirx.cms.construction.Store.SaveIdReference
-import org.qirx.cms.construction.System
-import org.qirx.cms.construction.Validate
-import org.qirx.cms.construction.api.AddId
-import org.qirx.cms.construction.api.ExtractId
-import org.qirx.cms.construction.api.GetFieldSetFromQueryString
-import org.qirx.cms.construction.api.GetNextSegment
-import org.qirx.cms.construction.api.Merge
-import org.qirx.cms.construction.api.ToJsObject
-import org.qirx.cms.construction.api.ToJsValue
-import org.qirx.cms.machinery.BuildTools._
+
+import org.qirx.cms.construction._
+import org.qirx.cms.construction.api._
+import org.qirx.cms.machinery.BuildTools
+import org.qirx.cms.machinery.Free
+import org.qirx.cms.machinery.Program
 import org.qirx.cms.machinery.ProgramType
-import org.qirx.cms.machinery.{ ~> => ~> }
+import org.qirx.cms.machinery.~>
 import org.qirx.cms.metadata.DocumentMetadata
+
 import play.api.libs.json.JsObject
 import play.api.mvc.AnyContent
 import play.api.mvc.Request
-import org.qirx.cms.construction.Branch
 import play.api.mvc.Result
-import org.qirx.cms.construction.Index
-import org.qirx.cms.construction.RemoveConfidentialProperties
-import org.qirx.cms.machinery.Free
-import org.qirx.cms.machinery.Apply
-import org.qirx.cms.machinery.Id
-import org.qirx.cms.construction.DirectAction
-import org.qirx.cms.machinery.Co
-import org.qirx.cms.execution.SystemRunner
-import org.qirx.cms.machinery.FlatMap
-import org.qirx.cms.construction.AddGeneratedProperties
-import org.qirx.cms.construction.api.GetFieldsFrom
-import org.qirx.cms.construction.Store.GetActualId
 
 /**
  * The implicit parameters are used to make sure we have the correct
@@ -63,19 +36,26 @@ class DocumentRequestHandler[O[_]](
     e2: Store ~> O,
     e3: Index ~> O,
     e4: Metadata ~> O,
-    e5: Branch[Result]#T ~> O) extends Results {
+    e5: Branch[Result]#T ~> O) {
 
+  import BuildTools._
+  import Results._
+
+  private val makeIdUnique = meta.idGenerator.makeUnique _
+  private val generateIdFor = meta.idGenerator.generateFor _
+  private val metaId = meta.id
+  
   def get =
     for {
       fieldSet <- GetFieldSetFromQueryString(request.queryString)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
-      document <- Get(meta.id, id, fieldSet) ifNone Return(notFound)
+      document <- Store.Get(metaId, id, fieldSet) ifNone Return(notFound)
     } yield ok(document)
 
   private def list(fieldSet: Set[String]) =
     for {
-      documents <- List(meta.id, fieldSet)
+      documents <- Store.List(metaId, fieldSet)
     } yield ok(documents)
 
   def post =
@@ -100,7 +80,7 @@ class DocumentRequestHandler[O[_]](
   def put =
     for {
       (requestId, document) <- extractIdAndDocumentFromRequest
-      id <- GetActualId(meta.id, requestId) ifNone Return(notFound)
+      id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
       messages <- GetMessages(meta)
       results <- Validate(meta, document, messages) ifEmpty putDocument(id, document)
     } yield valitationResultsToResult(results)
@@ -117,11 +97,11 @@ class DocumentRequestHandler[O[_]](
   def patch =
     for {
       (requestId, newDocument) <- extractIdAndDocumentFromRequest
-      id <- GetActualId(meta.id, requestId) ifNone Return(notFound)
-      oldDocument <- Get(meta.id, id, Set.empty) ifNone Return(notFound)
-      fields <- GetFieldsFrom(newDocument)
+      id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
+      oldDocument <- Store.Get(metaId, id, Set.empty) ifNone Return(notFound)
       merged <- Merge(oldDocument, newDocument)
       messages <- GetMessages(meta)
+      fields <- GetFieldsFrom(newDocument)
       results <- Validate(meta, merged, messages, fields) ifEmpty patchDocument(id, merged)
     } yield valitationResultsToResult(results)
 
@@ -136,40 +116,16 @@ class DocumentRequestHandler[O[_]](
   def delete =
     for {
       (requestId, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
-      id <- GetActualId(meta.id, requestId) ifNone Return(notFound)
+      id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
-      _ <- Delete(meta.id, Some(id))
-      _ <- Index.Delete(meta.id, Some(id))
+      _ <- Store.Delete(metaId, Some(id))
+      _ <- Index.Delete(metaId, Some(id))
     } yield noContent
-
-  private def save(id: String, document: JsObject) =
-    for {
-      _ <- Save(meta.id, id, document)
-      _ <- putInIndex(id, document)
-    } yield ()
-
-  private val makeIdUnique = meta.idGenerator.makeUnique _
-
-  private val generateIdFor = meta.idGenerator.generateFor _
-
-  private def getUniqueId(id: String) = {
-    val withBranch = uniqueIdProgram(id)
-    val withoutBranch = withBranch.mergeBranch
-    withoutBranch.mapSuspension[O]
-  }
-
-  private def uniqueIdProgram(id: String)(
-    implicit e: ProgramType[(Base + Store + Branch[String]#T)#T]): Free[e.Result, String] = {
-    for {
-      _ <- Exists(meta.id, id) ifFalse ValueOf(id)
-      uniqueId <- uniqueIdProgram(makeIdUnique(id))
-    } yield uniqueId
-  }
 
   private val deleteAll =
     for {
-      _ <- Delete(meta.id)
-      _ <- Index.Delete(meta.id)
+      _ <- Store.Delete(metaId)
+      _ <- Index.Delete(metaId)
     } yield noContent
 
   private val extractIdAndDocumentFromRequest =
@@ -180,18 +136,37 @@ class DocumentRequestHandler[O[_]](
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
     } yield (id, document)
 
+  private def save(id: String, document: JsObject) =
+    for {
+      _ <- Store.Save(metaId, id, document)
+      _ <- putInIndex(id, document)
+    } yield ()
+
   private def saveWithNewId(oldId: String, newId: String, document: JsObject) =
     for {
-      _ <- SaveIdReference(meta.id, oldId, newId)
+      _ <- Store.SaveIdReference(metaId, oldId, newId)
       _ <- save(newId, document)
-      _ <- Delete(meta.id, Some(oldId))
-      _ <- Index.Delete(meta.id, Some(oldId))
+      _ <- Store.Delete(metaId, Some(oldId))
+      _ <- Index.Delete(metaId, Some(oldId))
     } yield ok(idObj(newId))
 
   private def putInIndex(id: String, document: JsObject) =
     for {
       publicDocument <- RemoveConfidentialProperties(meta, document)
-      _ <- Index.Put(meta.id, id, publicDocument)
+      _ <- Index.Put(metaId, id, publicDocument)
     } yield ()
 
+  private def getUniqueId(id: String) = {
+    val withBranch = uniqueIdProgram(id)
+    val withoutBranch = withBranch.mergeBranch
+    withoutBranch.mapSuspension[O]
+  }
+
+  private type Elements = ProgramType[(Base + Store + Branch[String]#T)#T]
+  private def uniqueIdProgram(id: String)(implicit e: Elements): Program[e.Result, String] = {
+    for {
+      _ <- Store.Exists(metaId, id) ifFalse ValueOf(id)
+      uniqueId <- uniqueIdProgram(makeIdUnique(id))
+    } yield uniqueId
+  }
 }

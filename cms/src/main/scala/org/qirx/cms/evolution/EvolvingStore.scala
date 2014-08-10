@@ -1,15 +1,13 @@
-package org.qirx.cms.execution
+package org.qirx.cms.evolution
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-import org.qirx.cms.construction.Store._
-import org.qirx.cms.construction.Store
 import org.qirx.cms.machinery.~>
+import org.qirx.cms.construction.Store
 
 import play.api.libs.json.JsObject
 import play.api.libs.json.Json.obj
-import org.qirx.cms.metadata.Evolutions
 
 /**
  * A store that wraps another store. It will add a version to the saved documents
@@ -24,6 +22,8 @@ class EvolvingStore(
 
   private val VERSION = "_version"
 
+  import Store._
+
   def transform[x] = {
     case List(metaId, fieldSet) =>
       val list = List(metaId, addVersion(fieldSet))
@@ -37,9 +37,9 @@ class EvolvingStore(
       val version = obj(VERSION -> latestVersionFor(metaId))
       store(Save(metaId, id, document ++ version))
 
-    case exists:Exists =>
+    case exists: Exists =>
       store(exists)
-      
+
     case saveIdReference: SaveIdReference =>
       store(saveIdReference)
 

@@ -1,36 +1,32 @@
 package org.qirx.cms.api
 
+import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import play.api.http.Status
-import play.api.libs.json.Json.arr
-import play.api.libs.json.Json.obj
-import play.api.mvc.AnyContent
-import play.api.mvc.Request
-import play.api.mvc.Result
-import org.qirx.cms.machinery.~>
-import org.qirx.cms.machinery.Id
-import org.qirx.cms.construction.Store
-import org.qirx.cms.construction.Metadata
+
+import org.qirx.cms.construction._
 import org.qirx.cms.construction.api.GetNextSegment
-import org.qirx.cms.machinery.ExecutionTools
+import org.qirx.cms.execution.SystemToId
 import org.qirx.cms.machinery.BuildTools
-import org.qirx.cms.construction.GetDocumentMetadata
-import org.qirx.cms.execution.SystemRunner
+import org.qirx.cms.machinery.ExecutionTools
+import org.qirx.cms.machinery.Id
 import org.qirx.cms.machinery.ProgramType
-import org.qirx.cms.construction.Branch
-import org.qirx.cms.construction.Return
-import org.qirx.cms.machinery.Free
-import org.qirx.cms.construction.Index
-import org.qirx.cms.construction.Index._
+import org.qirx.cms.machinery.~>
+
+import play.api.mvc.AnyContent
+import play.api.mvc.Result
+import play.api.mvc.Request
 
 class PublicApi(
   index: Index ~> Future,
   store: Store ~> Future,
   metadata: Metadata ~> Id)(
-    implicit val ec: ExecutionContext) extends Api with Results
-  with BuildTools with ExecutionTools {
+    implicit val ec: ExecutionContext) extends Api {
 
+  import BuildTools._
+  import ExecutionTools._
+  import Results._
+  
   def handleRequest(pathSegments: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathSegments)
@@ -66,11 +62,11 @@ class PublicApi(
 
   private def searchRequest(request: Request[AnyContent], remainingPathSegments: Seq[String])(implicit e: Elements) =
     for {
-      searchResult <- Search(request, remainingPathSegments)
+      searchResult <- Index.Search(request, remainingPathSegments)
     } yield searchResult
 
   private lazy val runner = {
-    val systemRunner = SystemRunner andThen IdToFuture
+    val systemRunner = SystemToId andThen IdToFuture
     val metadataRunner = metadata andThen IdToFuture
 
     index or store or systemRunner or metadataRunner

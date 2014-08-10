@@ -1,12 +1,10 @@
 package org.qirx.cms.metadata.dsl
 
-import org.qirx.cms.metadata.PropertyMetadata
-import play.api.libs.json.Json.obj
-import play.api.libs.json.JsValue
-import play.api.libs.json.JsObject
 import org.qirx.cms.i18n.Messages
-import play.api.libs.json.Reads
+import org.qirx.cms.metadata.PropertyMetadata
+
 import play.api.libs.json.JsObject
+import play.api.libs.json.JsValue
 
 abstract class Property(val id: String) extends PropertyMetadata with PropertyValidation {
   val confidential = false

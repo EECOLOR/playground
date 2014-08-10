@@ -1,10 +1,11 @@
 package org.qirx.cms.metadata.dsl
 
+import org.qirx.cms.i18n.Messages
 import org.qirx.cms.metadata.PropertyMetadata
+
 import play.api.libs.json.JsValue
 import play.api.libs.json.JsObject
 import play.api.libs.json.Json.obj
-import org.qirx.cms.i18n.Messages
 
 trait GeneratableValue { self: PropertyMetadata =>
   def generated = new GeneratedValueProperty(self)

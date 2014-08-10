@@ -1,11 +1,11 @@
 package org.qirx.cms.metadata.properties
 
+import org.qirx.cms.i18n.Messages
 import org.qirx.cms.metadata.dsl.Property
-import play.api.libs.json.JsValue
+
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
-import play.api.libs.json.Json.obj
-import org.qirx.cms.i18n.Messages
+import play.api.libs.json.JsValue
 
 class Label(id: String) extends Property(id) {
   

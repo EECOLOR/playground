@@ -1,12 +1,14 @@
 package org.qirx.cms.metadata.properties
 
-import org.qirx.cms.metadata.dsl.Property
-import play.api.libs.json.JsValue
-import play.api.libs.json.JsObject
-import org.qirx.cms.i18n.Messages
-import play.api.libs.json.JsArray
-import play.api.libs.json.JsString
 import scala.collection.Set
+
+import org.qirx.cms.i18n.Messages
+import org.qirx.cms.metadata.dsl.Property
+
+import play.api.libs.json.JsArray
+import play.api.libs.json.JsObject
+import play.api.libs.json.JsString
+import play.api.libs.json.JsValue
 
 case class RichContentElement(name: String, attributes: Seq[String] = Seq.empty) {
   override def toString = s"$name[${attributes mkString "|"}]"

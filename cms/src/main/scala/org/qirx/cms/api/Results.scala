@@ -1,10 +1,11 @@
 package org.qirx.cms.api
 
-import play.api.mvc.{ Results => PlayResults }
 import play.api.http.Status
-import play.api.libs.json.Json.obj
 import play.api.libs.json.JsObject
+import play.api.libs.json.Json.obj
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json.Writes
+import play.api.mvc.{Results => PlayResults}
 
 trait Results extends PlayResults with Status {
   val STATUS = "status"
@@ -44,3 +45,5 @@ trait Results extends PlayResults with Status {
 
   def idObj(id: String) = obj(ID -> id)
 }
+
+object Results extends Results

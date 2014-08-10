@@ -4,8 +4,6 @@ import scala.language.higherKinds
 
 trait Free[F[_], A] {
 
-  type Result[x] = F[x]
-
   def flatMap[B](f: A => Free[F, B]): Free[F, B] =
     this match {
       case Apply(a) => f(a)
@@ -37,6 +35,10 @@ trait Free[F[_], A] {
     this
 }
 
+case class Apply[F[_], A](value: A) extends Free[F, A]
+
+case class FlatMap[F[_], A, B](input: F[A], f: A => Free[F, B]) extends Free[F, B]
+
 object Free {
 
   def apply[F[_], A](f: F[A]): Free[F, A] = FlatMap(f, Apply(_: A))
@@ -67,7 +69,3 @@ object Free {
       }
   }
 }
-
-case class Apply[F[_], A](value: A) extends Free[F, A]
-
-case class FlatMap[F[_], A, B](input: F[A], f: A => Free[F, B]) extends Free[F, B]

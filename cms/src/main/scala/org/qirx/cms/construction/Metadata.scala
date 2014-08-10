@@ -1,8 +1,9 @@
 package org.qirx.cms.construction
 
-import play.api.libs.json.JsObject
-import org.qirx.cms.metadata.DocumentMetadata
 import org.qirx.cms.i18n.Messages
+import org.qirx.cms.metadata.DocumentMetadata
+
+import play.api.libs.json.JsObject
 
 sealed trait Metadata[T]
 case class GetDocumentMetadata(documentId: String) extends Metadata[Option[DocumentMetadata]]

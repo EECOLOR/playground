@@ -1,13 +1,13 @@
 package org.qirx.cms.metadata.dsl
 
-import play.api.libs.json.Reads
-import play.api.libs.json.JsValue
-import play.api.libs.json.Json.obj
-import play.api.libs.json.JsObject
 import org.qirx.cms.i18n.Messages
 import org.qirx.cms.metadata.PropertyMetadata
+
+import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
-import play.api.libs.json.JsArray
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json.obj
+import play.api.libs.json.Reads
 
 trait PropertyValidation { self: PropertyMetadata =>
 

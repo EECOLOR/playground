@@ -60,13 +60,14 @@ trait BranchEnhancements {
    * It is now required that the branch is located at the head of the Coproduct.
    * Theoretically we could write a transformation that moves the branch to the 
    * front of the Coproduct or alternatively a way where it does not matter 
-   * where the branch is located.  
+   * where the branch is located. For now it was too complicated and not a real
+   * anoying problem.  
    */
   implicit class CoproductWithBranchEnhancements[F[_], A, In[_], Out[_]](
-    free: Free[In, A])(implicit withBranchAtHead: In ~> Co[Branch[A]#T, Out]#T) {
+    program: Program[In, A])(implicit withBranchAtHead: In ~> Co[Branch[A]#T, Out]#T) {
 
     def mergeBranch: Free[Out, A] =
-      free match {
+      program match {
         case Apply(a) => Apply(a)
         case x @ FlatMap(fa, f) =>
           withBranchAtHead(fa).value match {

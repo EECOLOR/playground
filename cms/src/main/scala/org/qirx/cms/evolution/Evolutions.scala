@@ -1,4 +1,4 @@
-package org.qirx.cms.metadata
+package org.qirx.cms.evolution
 
 import play.api.libs.json.JsObject
 
