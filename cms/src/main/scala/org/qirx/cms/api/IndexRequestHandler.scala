@@ -32,9 +32,10 @@ class IndexRequestHandler[O[_]](
     e2: Index ~> O,
     e3: Store ~> O,
     e4: Metadata ~> O,
-    e5: Branch[Result]#T ~> O) extends Results {
+    e5: Branch[Result]#T ~> O) {
 
   import BuildTools._
+  import Results._
 
   private val metaId = meta.id
   

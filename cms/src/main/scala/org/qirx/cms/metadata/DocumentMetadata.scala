@@ -3,6 +3,9 @@ package org.qirx.cms.metadata
 import scala.collection.immutable.ListMap
 import org.qirx.cms.evolution.Evolutions
 import org.qirx.cms.evolution.Evolution
+import play.api.libs.json.JsObject
+import play.api.libs.json.Writes
+import play.api.libs.json.Json
 
 trait DocumentMetadata {
   /**
@@ -30,4 +33,13 @@ trait DocumentMetadata {
    * A utility method to add evolutions
    */
   def withEvolutions(evolutions:Evolution*):DocumentMetadata
+  
+  /**
+   * Converts this document type to a json object
+   */
+  def toJson:JsObject
+}
+
+object DocumentMetadata {
+  implicit val writes = Writes[DocumentMetadata](_.toJson)
 }

@@ -8,19 +8,13 @@ import org.qirx.littlespec.fragments.Text
 import org.qirx.littlespec.fragments.Fragment
 import scala.reflect.ClassTag
 import org.qirx.littlespec.reporter.MarkdownReporter
+import org.qirx.littlespec.fragments.Code
 
 trait Example { self: Specification =>
 
-  class CodeString[T](val value:T, code:String) {
-    override def toString = code
-  }
-  
-  def codeString[T](code: => T)(implicit location:Location) = 
-    new CodeString(code, Source.codeAtLocation(location).text)
-  
   class ExampleContainer(implicit location: Location) { self =>
 
-    var parts: Seq[Title] = Seq(Source.codeAtLocation(location))
+    var parts: Seq[Title] = Seq(codeWithReplacements)
 
     class Sub(part: Title) {
       def code[T <: ExampleContainer](code: self.type => T) =
@@ -28,7 +22,7 @@ trait Example { self: Specification =>
     }
     def text(part: String) = new Sub(Text(part))
 
-    def withPreviousParts[T >: this.type](previousParts: Seq[Title]):T = {
+    def withPreviousParts[T >: this.type](previousParts: Seq[Title]): T = {
       parts = previousParts ++ self.parts
       this
     }
@@ -44,8 +38,11 @@ trait Example { self: Specification =>
     def withSpecification(body: this.type => FragmentBody) =
       createFragment(Source.codeAtLocation(location), body(this))
   }
-  
-  def link[T : ClassTag] = {
+
+  def exampleWithReplacements[T](code: => T)(implicit asBody: T => Fragment.Body, location: Location): Fragment =
+    createFragment(codeWithReplacements, code)
+
+  def link[T: ClassTag] = {
     val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
 
     val name = MarkdownReporter.name(fullyQualifiedName)
@@ -57,6 +54,6 @@ trait Example { self: Specification =>
     s"[$cleanName]($cleanFileName)"
   }
 
-  def moreInformation[T : ClassTag] =
+  def moreInformation[T: ClassTag] =
     s"For detailed information see ${link[T]}"
 }

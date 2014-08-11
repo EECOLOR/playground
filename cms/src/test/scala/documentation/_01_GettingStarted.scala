@@ -25,6 +25,9 @@ import testUtils.TestApplication
 import testUtils.TestStore
 import testUtils.TestEnvironment
 import testUtils.withFixedDateTime
+import testUtils.codeString
+import testUtils.testCmsMetadata
+import testUtils.testCmsMetadataJson
 
 object _01_GettingStarted extends Specification with Example {
 
@@ -47,20 +50,15 @@ object _01_GettingStarted extends Specification with Example {
             .isDefined
         }
 
+      val documents = Seq(
+        testCmsMetadata.value
+      )
+
       val cms = new Cms(
         pathPrefix = "/api",
         authenticate = customAuthenticate,
         environment = new TestEnvironment,
-        documents = Seq(
-          Document(id = "article", idField = "title")(
-            "title" -> Label,
-            "secret" -> Confidential(Label.?),
-            "body" -> RichContent.?,
-            "tags" -> Tag.*,
-            "date" -> Date.generated,
-            "publishDate" -> Date.?
-          )
-        )
+        documents = documents
       )
     }
     .text(
@@ -166,46 +164,13 @@ object _01_GettingStarted extends Specification with Example {
             |authentication. If you need it to be publicly available, just do 
             |some smart stuff in you authenticate method.""".stripMargin - {
 
-          example {
+          exampleWithReplacements {
             val auth = "X-Qirx-Authenticate" -> "let me in"
 
             val (status, body) = GET withHeader auth from "/api/metadata/documents/article"
 
             status is 200
-            body is obj(
-              "id" -> "article",
-              "properties" -> arr(
-                obj(
-                  "id" -> "label",
-                  "name" -> "title"
-                ),
-                obj(
-                  "id" -> "label",
-                  "name" -> "secret"
-                ),
-                obj(
-                  "id" -> "rich_content",
-                  "name" -> "body",
-                  "optional" -> true,
-                  "extra" -> obj(
-                    "allowedElements" -> arr(
-                      "strong", "em", "ul", "ol", "li", "span[class|lang]",
-                      "a[href|hreflang|title|target]", "br", "p[class|lang]")
-                  )
-                ),
-                obj(
-                  "id" -> "tag",
-                  "name" -> "tags",
-                  "set" -> true,
-                  "nonEmpty" -> false
-                ),
-                obj(
-                  "id" -> "date",
-                  "name" -> "date",
-                  "generated" -> true
-                )
-              )
-            )
+            body is testCmsMetadataJson.value
           }
         }
       }

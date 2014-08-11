@@ -64,11 +64,12 @@ class Cms(
 
   private lazy val privateApi = new PrivateApi(store, index, metadata, authentication)
   private lazy val publicApi = new PublicApi(index, store, metadata)
+  private lazy val metadataApi = new MetadataApi(metadata, authentication)
 
   private val determineApiFor: String => Api = {
     case "private" => privateApi
     case "public" => publicApi
-    case "metadata" => MetadataApi
+    case "metadata" => metadataApi
     case _ => NoApi
   }
 
@@ -77,7 +78,7 @@ class Cms(
    * completed before the CMS is started.
    */
   private def validateExistingDocuments() = {
-    val validator = new DocumentValidator(documentMetadata, metadata, store)
+    val validator = new DocumentValidator(metadata, store)
     
     val result = Await.result(validator.validate(), 60.seconds)
 
@@ -89,7 +90,7 @@ class Cms(
   }
   
   private def reindexExistingDocuments() = {
-    val indexer = new DocumentIndexer(documentMetadata, store, index)
+    val indexer = new DocumentIndexer(metadata, store, index)
     /*
      * Using await here because we want the documents to be indexed
      * before the CMS is started

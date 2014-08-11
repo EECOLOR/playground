@@ -11,6 +11,8 @@ import org.joda.time.DateTime
 
 class Date(id: String) extends Property(id) with GeneratableValue {
 
+  lazy val extraJson = None
+  
   def generate: JsValue = IsoDate.writes writes DateTime.now
 
   def validate(messages: Messages, value: JsValue): Option[JsObject] =

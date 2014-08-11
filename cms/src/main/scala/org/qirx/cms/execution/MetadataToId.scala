@@ -17,6 +17,8 @@ class MetadataToId(documents: Seq[DocumentMetadata]) extends (Metadata ~> Id) {
 
   def transform[x] = {
 
+    case GetMetadata => documents
+    
     case GetDocumentMetadata(documentId) =>
       documentMap get documentId
 

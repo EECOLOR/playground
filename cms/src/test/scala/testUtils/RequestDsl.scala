@@ -75,6 +75,7 @@ class WithHeader(
 
   def from(path: String) = {
     val request = FakeRequest(method, pathPrefix + path)
+      .withHeaders(header.toSeq: _*)
     import Helpers._
     routeRequest(request)
   }

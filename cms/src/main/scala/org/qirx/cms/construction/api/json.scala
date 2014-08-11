@@ -1,12 +1,12 @@
 package org.qirx.cms.construction.api
 
 import org.qirx.cms.construction.DirectAction
-
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
 import play.api.mvc.AnyContent
 import play.api.mvc.Request
+import play.api.libs.json.Writes
 
 case class ToJsValue(request: Request[AnyContent]) extends DirectAction[Option[JsValue]] {
   val result = request.body.asJson

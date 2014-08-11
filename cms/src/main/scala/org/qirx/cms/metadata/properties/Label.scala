@@ -9,6 +9,8 @@ import play.api.libs.json.JsValue
 
 class Label(id: String) extends Property(id) {
   
+  lazy val extraJson = None
+  
   def validate(messages:Messages, value: JsValue): Option[JsObject] =
     toType[JsString](value)
       .right.map(validateString(messages, _))

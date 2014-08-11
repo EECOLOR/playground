@@ -40,18 +40,13 @@ class PublicApi(
    */
   private def programFor(request: Request[AnyContent], pathSegments: Seq[String])(implicit e: Elements) =
     for {
-      _ <- Return(validRequestMethod(request.method)) ifNone Return(methodNotAllowed)
+      _ <- Return(request.method == "GET") ifFalse Return(methodNotAllowed)
       (segment, rest) <- GetNextSegment(pathSegments) ifNone Return(notFound)
       result <- segment match {
         case "search" => searchRequest(request, rest)
         case id => documentRequest(request, id, rest)
       }
     } yield result
-
-  private val validRequestMethod: String => Option[String] = {
-    case get @ "GET" => Some(get)
-    case _ => None
-  }
 
   private def documentRequest(request: Request[AnyContent], id: String, pathAtDocument: Seq[String])(implicit e: Elements) =
     for {

@@ -405,4 +405,8 @@ object DocumentSpec extends Specification {
     def withSpecification(spec: self.type => FragmentBody) =
       createFragment(Source.codeAtLocation(location), spec(self))
   }
+  
+  "api docs publishing" - {}
+  
+  "code coverage" - {}
 }

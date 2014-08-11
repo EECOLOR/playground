@@ -9,13 +9,21 @@ import play.api.libs.json.JsArray
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
+import play.api.libs.json.Json.obj
 
 case class RichContentElement(name: String, attributes: Seq[String] = Seq.empty) {
-  override def toString = s"$name[${attributes mkString "|"}]"
+  private lazy val attributesString =
+    if (attributes.isEmpty) "" else attributes.mkString("[", "|", "]")
+
+  override def toString = name + attributesString
 }
 
 class RichContent(id: String, protected val allowedElements: Seq[RichContentElement])
   extends Property(id) {
+
+  lazy val extraJson = Some(
+    obj("allowedElements" -> allowedElements.map(_.toString))
+  )
 
   protected lazy val allowedElementsMap =
     allowedElements.map(e => e.name -> e.attributes.toSet).toMap
@@ -65,7 +73,7 @@ class RichContent(id: String, protected val allowedElements: Seq[RichContentElem
 
     import scala.language.implicitConversions
     implicit def rightAssociative[A, B](e: Either[A, B]) = e.right
-    
+
     val result =
       for {
         element <- getElement
@@ -90,7 +98,7 @@ object RichContent extends RichContent("rich_content",
   allowedElements = Seq(
     RichContentElement("strong"), RichContentElement("em"),
     RichContentElement("ul"), RichContentElement("ol"), RichContentElement("li"),
-    RichContentElement("span", Seq("class", "lang]")),
+    RichContentElement("span", Seq("class", "lang")),
     RichContentElement("a", Seq("href", "hreflang", "title", "target")),
     RichContentElement("br"), RichContentElement("p", Seq("class", "lang"))
   )

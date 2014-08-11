@@ -13,31 +13,11 @@ import play.api.test.FakeApplication
 import org.qirx.cms.metadata.dsl.Confidential
 
 trait ApiExampleSpecification extends Example { self: Specification =>
-
   def withApiExampleIntroduction(apiPrefix: String)(specifications: FakeApplication => FragmentBody) = {
 
     val pathPrefix = "/api"
 
-    "Use this metadata definition in 'Getting Started' as well" - {}
-    
-    val cms = codeString {
-      new Cms(
-        pathPrefix = "/api",
-        authenticate = { _ => Future.successful(true) },
-        environment = new TestEnvironment,
-        documents = Seq(
-          Document(id = "article", idField = "title")(
-            "title" -> Label,
-            "secret" -> Confidential(Label.?),
-            "body" -> RichContent.?,
-            "tags" -> Tag.*,
-            "date" -> Date.generated,
-            "publishDate" -> Date.?
-          )
-        )
-      )
-    }
-
+    val cms = testCms(new TestEnvironment)
     val app = TestApplication(cms.value)
 
     val messages = {

@@ -10,6 +10,8 @@ import play.api.libs.json.JsValue
 
 class Tag(id: String) extends Property(id) with Identifiable {
 
+  lazy val extraJson = None
+  
   protected val validTag = "[a-zA-Z0-9_-]+"
 
   def validate(messages: Messages, value: JsValue): Option[JsObject] =

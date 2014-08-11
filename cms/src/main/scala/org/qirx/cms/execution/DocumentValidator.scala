@@ -2,7 +2,6 @@ package org.qirx.cms.execution
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-
 import org.qirx.cms.construction.GetMessages
 import org.qirx.cms.construction.Metadata
 import org.qirx.cms.construction.Store
@@ -13,15 +12,14 @@ import org.qirx.cms.machinery.Id
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.metadata.DocumentMetadata
-
 import play.api.libs.json.JsObject
+import org.qirx.cms.construction.GetMetadata
 
 /**
  * The validate method validates all documents and returns the results as 
  * a seq of tuples.
  */
 class DocumentValidator(
-  documents: Seq[DocumentMetadata],
   metadata: Metadata ~> Id,
   store: Store ~> Future)(implicit ec: ExecutionContext) {
 
@@ -38,7 +36,8 @@ class DocumentValidator(
 
   private def validationProgram(implicit e: Elements) =
     for {
-      meta <- documents.asProgram
+      documentMetadata <- GetMetadata
+      meta <- documentMetadata.asProgram
       messages <- GetMessages(meta)
       documents <- Store.List(meta.id, Set.empty)
       document <- documents.asProgram
