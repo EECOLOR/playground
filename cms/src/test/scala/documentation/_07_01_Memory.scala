@@ -1,5 +1,5 @@
 package documentation
 
-object _06_01_Store {
+object _07_01_Memory {
 
 }

@@ -2,7 +2,7 @@ name := "cms"
 
 organization := "org.qirx"
 
-scalaVersion := "2.11.1"
+scalaVersion := "2.11.2"
 
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 

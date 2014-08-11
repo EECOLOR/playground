@@ -1,5 +1,5 @@
 package documentation
 
-object _06_02_Index {
+object _07__Index {
 
 }

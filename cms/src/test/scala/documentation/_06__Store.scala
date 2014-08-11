@@ -1,0 +1,109 @@
+package documentation
+
+import org.qirx.littlespec.Specification
+import testUtils.cmsName
+import testUtils.codeString
+import org.qirx.cms.construction.Store
+import org.qirx.cms.machinery.~>
+import scala.concurrent.Future
+import org.qirx.cms.testing.MemoryStore
+import org.qirx.cms.testing.StoreTester
+import org.qirx.cms.testing.TestSuccess
+import org.qirx.cms.testing.TestFailure
+import scala.reflect.ClassTag
+import play.api.libs.json.JsObject
+import org.qirx.cms.testing.TestResult
+
+class _06__Store extends Specification {
+  "#The Store" - {
+
+    val customStoreCode = codeString {
+      object CustomStore extends (Store ~> Future) {
+        import Store._
+        def transform[x] = {
+          case List(metaId, fieldSet) => ???
+          case Get(metaId, id, fieldSet) => ???
+          case Save(metaId, id, document) => ???
+          case SaveIdReference(metaId, id, newId) => ???
+          case GetActualId(metaId, id) => ???
+          case Delete(metaId, id) => ???
+          case Exists(metaId, id) => ???
+        }
+      }
+    }
+
+    s"""|The store is used by the $cmsName to store documents. In practice it's
+        |a transformation from `Store` elements to a Scala `Future`.
+        |
+        |Since both `Store` and `Future` have a single type parameter, we call 
+        |this transformation a natural transformation. Where a function has a
+        |type signature `A => B`, natural transformation has a type signature 
+        |`A[x] => B[x]`.
+        |
+        |We have introduced an operator for natural transformations, this allows
+        |us to write the store signature like this: `Store ~> Future`.
+        |
+        |`Store[T]` is a sealed trait where `T` is the type of the expected result. 
+        |The `Get` case extends `Store[Option[JsObject]]` meaning it should 
+        |return an `Option` of `JsObject`.
+        |
+        |To create a store simply implement the `transform` method.
+        |```scala
+        |$customStoreCode
+        |```""".stripMargin - {
+
+      val customStore = MemoryStore
+
+      """|To create a store implementation you can use the supplied `StoreTester`,
+         |it will check if the store behaves as expected.
+         |
+         |Some test frameworks work better when they have extra information about 
+         |the type. Most frameworks make use of typeclasses to help with this. 
+         |
+         |The store tester allows for typeclasses to be attached to the failures.
+         |By default the `ClassTag` is attached.""".stripMargin -
+        example {
+          val storeTester = new StoreTester
+
+          val testResults = storeTester.test(customStore)
+
+          testResults.foreach {
+            case (description, result) =>
+              result.fold(
+                onSuccess = {
+                  // report success using your favorite test framework
+                },
+                onFailure = {
+                  case failure @ TestFailure(value, expectedValue) =>
+                    // use the typeclass to get more information about the type
+                    val className = failure.typeclass.runtimeClass.getName
+                  // report failure using your favorite test framework
+                }
+              )
+          }
+
+          success
+        }
+
+      """|To use a different typeclass, simply pass it to the tester
+         |
+         |Note that when you do this, calling `test` requires you to 
+         |supply the appropriate typeclass instances.
+         |
+         |The tests of the built-in stores make use of this feature""".stripMargin -
+        example {
+          trait CustomTypeclass[T]
+          object CustomTypeclass {
+            implicit val forJsObject: CustomTypeclass[JsObject] = null
+          }
+
+          val storeTester = new StoreTester[CustomTypeclass]
+
+          val result: Seq[(String, TestResult[_, CustomTypeclass])] =
+            storeTester.test(customStore)
+
+          success
+        }
+    }
+  }
+}
