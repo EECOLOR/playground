@@ -98,7 +98,7 @@ class DocumentRequestHandler[O[_]](
     for {
       (requestId, newDocument) <- extractIdAndDocumentFromRequest
       id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
-      oldDocument <- Store.Get(metaId, id, Set.empty) ifNone Return(notFound)
+      oldDocument <- Store.Get(metaId, id) ifNone Return(notFound)
       merged <- Merge(oldDocument, newDocument)
       messages <- GetMessages(meta)
       fields <- GetFieldsFrom(newDocument)

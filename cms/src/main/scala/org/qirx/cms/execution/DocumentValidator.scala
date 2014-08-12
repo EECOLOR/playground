@@ -39,7 +39,7 @@ class DocumentValidator(
       documentMetadata <- GetMetadata
       meta <- documentMetadata.asProgram
       messages <- GetMessages(meta)
-      documents <- Store.List(meta.id, Set.empty)
+      documents <- Store.List(meta.id)
       document <- documents.asProgram
       result <- Validate(meta, document, messages)
     } yield (document, meta, result)

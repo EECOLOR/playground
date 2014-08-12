@@ -13,6 +13,7 @@ import org.qirx.cms.testing.TestFailure
 import scala.reflect.ClassTag
 import play.api.libs.json.JsObject
 import org.qirx.cms.testing.TestResult
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 class _06__Store extends Specification {
   "#The Store" - {
@@ -95,11 +96,15 @@ class _06__Store extends Specification {
           trait CustomTypeclass[T]
           object CustomTypeclass {
             implicit val forJsObject: CustomTypeclass[JsObject] = null
+            implicit val forJsObjectOption: CustomTypeclass[Option[JsObject]] = null
+            implicit val forJsObjectSeq: CustomTypeclass[Seq[JsObject]] = null
+            implicit def forJsObjectSeqMap:CustomTypeclass[Map[String, Seq[JsObject]]] = null
+            implicit def forJsObjectOptionMap:CustomTypeclass[Map[String, Option[JsObject]]] = null
           }
 
           val storeTester = new StoreTester[CustomTypeclass]
 
-          val result: Seq[(String, TestResult[_, CustomTypeclass])] =
+          val result: Seq[(String, TestResult[CustomTypeclass])] =
             storeTester.test(customStore)
 
           success

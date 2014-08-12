@@ -31,7 +31,7 @@ class DocumentIndexer(
       documentMetadata <- GetMetadata
       meta <- documentMetadata.asProgram
       _ <- Index.Delete(meta.id) 
-      documents <- Store.List(meta.id, Set.empty)
+      documents <- Store.List(meta.id)
       document <- documents.asProgram
       id <- ExtractId(document)
       _ <- Index.Put(meta.id, id, document)
