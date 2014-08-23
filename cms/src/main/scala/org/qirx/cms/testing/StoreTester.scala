@@ -18,21 +18,24 @@ class StoreTester[T[_]](
   type Result = (String, TestResult[T])
 
   def test(store: Store ~> Future)(
-    implicit t1: T[JsObject],
-    t2: T[Option[JsObject]],
-    t3: T[Seq[JsObject]],
-    t4: T[Map[String, Seq[JsObject]]],
-    t5: T[Map[String, Option[JsObject]]],
-    t6: T[Seq[String]],
-    t7: T[Boolean],
-    t8: T[Seq[Boolean]]
+    implicit ev1: T[JsObject],
+    ev2: T[Option[JsObject]],
+    ev3: T[Seq[JsObject]],
+    ev4: T[Map[String, Seq[JsObject]]],
+    ev5: T[Map[String, Option[JsObject]]],
+    ev6: T[Seq[String]],
+    ev7: T[Boolean],
+    ev8: T[Seq[Boolean]]
     ): Seq[Result] = {
 
+    val t1 = "tests1"
+    val t2 = "tests2"
+    
     val tests: Seq[(String, TestCode[Future[TestResult[T]]])] =
       Seq(
         "be empty for the tests to run correctly" -> testCode {
           for {
-            d <- store(List("tests1"))
+            d <- store(List(t1))
           } yield {
             if (d.isEmpty) success
             else TestFailure(d, Seq.empty)
@@ -41,25 +44,25 @@ class StoreTester[T[_]](
 
         "accept an empty document" -> testCode {
           for {
-            _ <- store(Save("tests1", "empty", empty))
+            _ <- store(Save(t1, "empty", empty))
           } yield success
         },
 
         "accept a non-empty document" -> testCode {
           for {
-            _ <- store(Save("tests1", "non_empty", obj("some" -> "object")))
+            _ <- store(Save(t1, "non_empty", obj("some" -> "object")))
           } yield success
         },
 
         "simply override a complete document when an existing id is given" -> testCode {
           for {
-            _ <- store(Save("tests1", "non_empty", non_empty_1))
+            _ <- store(Save(t1, "non_empty", non_empty_1))
           } yield success
         },
 
         "be able to list those documents (order not relevant)" -> testCode {
           for {
-            d <- store(List("tests1"))
+            d <- store(List(t1))
           } yield {
             val e = Seq(empty, non_empty_1)
             if (e.diff(d).isEmpty) success
@@ -69,28 +72,28 @@ class StoreTester[T[_]](
 
         "keep documents with different metaId's separate" -> testCode {
           for {
-            _ <- store(Save("tests2", "non_empty", non_empty_2))
-            d1 <- store(List("tests1"))
-            d2 <- store(List("tests2"))
+            _ <- store(Save(t2, "non_empty", non_empty_2))
+            d1 <- store(List(t1))
+            d2 <- store(List(t2))
           } yield {
             val e1 = Seq(empty, non_empty_1)
             val e2 = Seq(non_empty_2)
             if (e1.diff(d1).isEmpty && e2.diff(d2).isEmpty) success
             else failure(
               Map(
-                "tests1" -> d1,
-                "tests2" -> d2
+                t1 -> d1,
+                t2 -> d2
               ),
               Map(
-                "tests1" -> e1,
-                "tests2" -> e2
+                t1 -> e1,
+                t2 -> e2
               ))
           }
         },
 
         "return `None` when trying to receive non-existent documents" -> testCode {
           for {
-            d1 <- store(Get("tests1", "non_existent"))
+            d1 <- store(Get(t1, "non_existent"))
           } yield {
             val e1 = None
             if (d1 == e1) success
@@ -100,9 +103,9 @@ class StoreTester[T[_]](
 
         "be able to retrieve single documents" -> testCode {
           for {
-            d1 <- store(Get("tests1", "empty"))
-            d2 <- store(Get("tests1", "non_empty"))
-            d3 <- store(Get("tests2", "non_empty"))
+            d1 <- store(Get(t1, "empty"))
+            d2 <- store(Get(t1, "non_empty"))
+            d3 <- store(Get(t2, "non_empty"))
           } yield {
             val e1 = Some(empty)
             val e2 = Some(non_empty_1)
@@ -125,7 +128,7 @@ class StoreTester[T[_]](
 
         "be able to retrieve documents partially" -> testCode {
           for {
-            d <- store(List("tests1", Set("extra")))
+            d <- store(List(t1, Set("extra")))
           } yield {
             val e = Seq(empty, obj("extra" -> 1))
             if (e.diff(d).isEmpty) success
@@ -135,7 +138,7 @@ class StoreTester[T[_]](
 
         "be able to retrieve a single document partially" -> testCode {
           for {
-            d <- store(Get("tests2", "non_empty", Set("extra")))
+            d <- store(Get(t2, "non_empty", Set("extra")))
           } yield {
             val e = Some(obj("extra" -> 2))
             if (e == d) success
@@ -145,16 +148,16 @@ class StoreTester[T[_]](
 
         "accept updates of the id" -> testCode {
           for {
-            _ <- store(UpdateId("tests1", "non_empty", "non_empty_reference_1"))
-            _ <- store(UpdateId("tests1", "non_empty_reference_1", "non_empty_reference_2"))
+            _ <- store(UpdateId(t1, "non_empty", "non_empty_reference_1"))
+            _ <- store(UpdateId(t1, "non_empty_reference_1", "non_empty_reference_2"))
           } yield success
         },
 
         "return the correct document for both the id and old ids" -> testCode {
           for {
-            d1 <- store(Get("tests1", "non_empty"))
-            d2 <- store(Get("tests1", "non_empty_reference_1"))
-            d3 <- store(Get("tests1", "non_empty_reference_2"))
+            d1 <- store(Get(t1, "non_empty"))
+            d2 <- store(Get(t1, "non_empty_reference_1"))
+            d3 <- store(Get(t1, "non_empty_reference_2"))
           } yield {
             val e = Some(non_empty_1)
             if (e == d1 && e == d2 && e == d3) success
@@ -174,21 +177,21 @@ class StoreTester[T[_]](
 
         "keep references between metaId's separate" -> testCode {
           for {
-            _ <- store(UpdateId("tests2", "non_empty", "non_empty_reference_3"))
-            d1 <- store(Get("tests1", "non_empty"))
-            d2 <- store(Get("tests2", "non_empty"))
+            _ <- store(UpdateId(t2, "non_empty", "non_empty_reference_3"))
+            d1 <- store(Get(t1, "non_empty"))
+            d2 <- store(Get(t2, "non_empty"))
           } yield {
             val e1 = Some(non_empty_1)
             val e2 = Some(non_empty_2)
             if (e1 == d1 && e2 == d2) success
             else failure(
               Map(
-                "tests1" -> d1,
-                "tests2" -> d2
+                t1 -> d1,
+                t2 -> d2
               ),
               Map(
-                "tests1" -> e1,
-                "tests2" -> e2
+                t1 -> e1,
+                t2 -> e2
               )
             )
           }
@@ -196,11 +199,11 @@ class StoreTester[T[_]](
 
         "keep track of the actual id's" -> testCode {
           for {
-            id1 <- store(GetActualId("tests1", "non_empty"))
-            id2 <- store(GetActualId("tests1", "non_empty_reference_1"))
-            id3 <- store(GetActualId("tests1", "non_empty_reference_2"))
-            id4 <- store(GetActualId("tests2", "non_empty"))
-            id5 <- store(GetActualId("tests2", "non_empty_reference_3"))
+            id1 <- store(GetActualId(t1, "non_empty"))
+            id2 <- store(GetActualId(t1, "non_empty_reference_1"))
+            id3 <- store(GetActualId(t1, "non_empty_reference_2"))
+            id4 <- store(GetActualId(t2, "non_empty"))
+            id5 <- store(GetActualId(t2, "non_empty_reference_3"))
           } yield {
             val e1 = Some("non_empty_reference_2")
             val e2 = Some("non_empty_reference_3")
@@ -215,7 +218,7 @@ class StoreTester[T[_]](
 
         "return `false` when checking the existence of a non-existent document" -> testCode {
          for {
-           b <- store(Exists("tests1", "non_existent"))
+           b <- store(Exists(t1, "non_existent"))
          } yield {
            if (b == false) success
            else failure(b, false)
@@ -224,11 +227,11 @@ class StoreTester[T[_]](
         
         "return `true` on existing documents" -> testCode {
           for {
-           b1 <- store(Exists("tests1", "non_empty"))
-            b2 <- store(Exists("tests1", "non_empty_reference_1"))
-            b3 <- store(Exists("tests1", "non_empty_reference_2"))
-            b4 <- store(Exists("tests2", "non_empty"))
-            b5 <- store(Exists("tests2", "non_empty_reference_3"))
+           b1 <- store(Exists(t1, "non_empty"))
+            b2 <- store(Exists(t1, "non_empty_reference_1"))
+            b3 <- store(Exists(t1, "non_empty_reference_2"))
+            b4 <- store(Exists(t2, "non_empty"))
+            b5 <- store(Exists(t2, "non_empty_reference_3"))
           } yield {
             val e = true
             if (b1 == e && b2 == e && b3 == e && b4 == e && b5 == e) success
@@ -238,9 +241,9 @@ class StoreTester[T[_]](
         
         "be able to delete by id" -> testCode {
           for {
-            _ <- store(Delete("tests2", Some("non_empty")))
-            d1 <- store(List("tests1"))
-            d2 <- store(List("tests2"))
+            _ <- store(Delete(t2, Some("non_empty")))
+            d1 <- store(List(t1))
+            d2 <- store(List(t2))
           } yield {
             val e1 = Seq(empty, non_empty_1)
             val e2 = Seq.empty[JsObject]
@@ -248,11 +251,11 @@ class StoreTester[T[_]](
             if (d1.diff(e1).isEmpty && d2.diff(e2).isEmpty) success
             else failure(
               Map(
-                "tests1" -> d1,
-                "tests2" -> d2),
+                t1 -> d1,
+                t2 -> d2),
               Map(
-                "tests1" -> e1,
-                "tests2" -> e2
+                t1 -> e1,
+                t2 -> e2
               )
             )
           }
@@ -260,20 +263,20 @@ class StoreTester[T[_]](
 
         "be able to delete all documents" -> testCode {
           for {
-            _ <- store(Delete("tests1"))
-            d1 <- store(List("tests1"))
-            d2 <- store(List("tests2"))
+            _ <- store(Delete(t1))
+            d1 <- store(List(t1))
+            d2 <- store(List(t2))
           } yield {
             val e1 = Seq.empty[JsObject]
             val e2 = Seq.empty[JsObject]
             if (d1.diff(e1).isEmpty && d2.diff(e2).isEmpty) success
             else failure(
               Map(
-                "tests1" -> d1,
-                "tests2" -> d2),
+                t1 -> d1,
+                t2 -> d2),
               Map(
-                "tests1" -> e1,
-                "tests2" -> e2
+                t1 -> e1,
+                t2 -> e2
               )
             )
           }
@@ -281,11 +284,11 @@ class StoreTester[T[_]](
 
         "retrieving the actual id's should return None" -> testCode {
           for {
-            id1 <- store(GetActualId("tests1", "non_empty"))
-            id2 <- store(GetActualId("tests1", "non_empty_reference_1"))
-            id3 <- store(GetActualId("tests1", "non_empty_reference_2"))
-            id4 <- store(GetActualId("tests2", "non_empty"))
-            id5 <- store(GetActualId("tests2", "non_empty_reference_3"))
+            id1 <- store(GetActualId(t1, "non_empty"))
+            id2 <- store(GetActualId(t1, "non_empty_reference_1"))
+            id3 <- store(GetActualId(t1, "non_empty_reference_2"))
+            id4 <- store(GetActualId(t2, "non_empty"))
+            id5 <- store(GetActualId(t2, "non_empty_reference_3"))
           } yield {
             val e = None
             if (id1 == e && id2 == e && id3 == e && id4 == e && id5 == e) success

@@ -10,89 +10,88 @@ class MemoryStore extends (Store ~> Future) {
 
   import Store._
 
-  type Storage = mutable.Map[String, JsObject]
-  private val store = mutable.Map.empty[String, Storage]
+  private val stores = mutable.Map.empty[String, DocumentStore]
 
   private def storeFor(metaId: String) =
-    store.getOrElseUpdate(metaId, mutable.LinkedHashMap.empty[String, JsObject])
-
-  private val idMappings = mutable.Map.empty[String, mutable.Map[String, String]]
-
-  private def idMappingsFor(metaId: String) =
-    idMappings.getOrElseUpdate(metaId, mutable.Map.empty[String, String])
-
-  private val unit = ()
-
-  private def getActualId(id: String)(implicit store: Storage, idMappings: mutable.Map[String, String]): Option[String] =
-    if (store contains id) Some(id)
-    else idMappings.get(id).flatMap(getActualId)
+    stores.getOrElseUpdate(metaId, new DocumentStore)
 
   def transform[x] = {
     case List(metaId, fieldSet) =>
-      val documents = storeFor(metaId).values.to[Seq]
+      Future successful storeFor(metaId).list(fieldSet)
+
+    case Save(metaId, id, document) =>
+      Future successful storeFor(metaId).save(id, document)
+
+    case Get(metaId, id, fieldSet) =>
+      Future successful storeFor(metaId).get(id, fieldSet)
+
+    case UpdateId(metaId, id, newId) =>
+      Future successful storeFor(metaId).updateId(id, newId)
+
+    case GetActualId(metaId, id) =>
+      Future successful storeFor(metaId).getActualId(id)
+
+    case Delete(metaId, id) =>
+      Future successful storeFor(metaId).delete(id)
+
+    case Exists(metaId, id) =>
+      Future successful storeFor(metaId).exists(id)
+  }
+
+  private class DocumentStore {
+    private val store = mutable.LinkedHashMap.empty[String, JsObject]
+    private val idMappings = mutable.Map.empty[String, String]
+
+    def list(fieldSet: Set[String]): Seq[JsObject] = {
+      val documents = store.values.to[Seq]
 
       val documentsWithFields =
         if (fieldSet.isEmpty) documents
         else documents.map(filterFieldsWith(fieldSet))
 
-      Future successful documentsWithFields
+      documentsWithFields
+    }
 
-    case Save(metaId, id, document) =>
-      storeFor(metaId) += (id -> document)
-      Future successful unit
+    def save(id: String, document: JsObject): Unit =
+      store += (id -> document)
 
-    case Get(metaId, id, fieldSet) =>
-      val store = storeFor(metaId)
-      val idMappings = idMappingsFor(metaId)
-      val document = getActualId(id)(store, idMappings).flatMap(store.get)
+    def get(id: String, fieldSet: Set[String]): Option[JsObject] = {
+
+      val document = getActualId(id).flatMap(store.get)
 
       val documentWithFields =
         if (fieldSet.isEmpty) document
         else document.map(filterFieldsWith(fieldSet))
 
-      Future successful documentWithFields
+      documentWithFields
+    }
 
-    case UpdateId(metaId, id, newId) =>
-      val store = storeFor(metaId)
-      val idMappings = idMappingsFor(metaId)
-
+    def updateId(id: String, newId: String): Unit = {
       val document = store.get(id)
       document.foreach { document =>
         store += (newId -> document)
         idMappings += (id -> newId)
         store -= id
       }
+    }
 
-      Future successful unit
+    def getActualId(id: String): Option[String] =
+      if (store contains id) Some(id)
+      else idMappings.get(id).flatMap(getActualId)
 
-    case GetActualId(metaId, id) =>
-      val store = storeFor(metaId)
-      val idMappings = idMappingsFor(metaId)
-
-      Future successful getActualId(id)(store, idMappings)
-
-    case Delete(metaId, id) =>
-      val store = storeFor(metaId)
-      val idMappings = idMappingsFor(metaId)
-      id.fold(ifEmpty = store.clear()) { id =>
-        getActualId(id)(store, idMappings).foreach { id =>
-          store -= id
-        }
+    def delete(id: Option[String]): Unit =
+      id.flatMap(getActualId).fold(ifEmpty = store.clear()) { id =>
+        store -= id
       }
 
-      Future successful unit
+    def exists(id: String): Boolean =
+      getActualId(id).map(store.contains).getOrElse(false)
 
-    case Exists(metaId, id) =>
-      val store = storeFor(metaId)
-      val idMappings = idMappingsFor(metaId)
-
-      Future successful getActualId(id)(store, idMappings).map(store.contains).getOrElse(false)
-  }
-
-  private def filterFieldsWith(fieldSet: Set[String]): JsObject => JsObject = { document =>
-    val filteredFields = document.fields.filter {
-      case (key, _) => fieldSet contains key
+    private def filterFieldsWith(fieldSet: Set[String]): JsObject => JsObject = { document =>
+      val filteredFields = document.fields.filter {
+        case (key, _) => fieldSet contains key
+      }
+      JsObject(filteredFields)
     }
-    JsObject(filteredFields)
   }
 }
