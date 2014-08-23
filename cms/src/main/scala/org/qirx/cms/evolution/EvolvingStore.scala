@@ -40,8 +40,8 @@ class EvolvingStore(
     case exists: Exists =>
       store(exists)
 
-    case saveIdReference: SaveIdReference =>
-      store(saveIdReference)
+    case updateId: UpdateId =>
+      store(updateId)
 
     case getActualId: GetActualId =>
       store(getActualId)

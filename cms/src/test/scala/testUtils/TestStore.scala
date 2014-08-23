@@ -9,9 +9,11 @@ import play.api.libs.json.JsString
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.construction.Store
 import org.qirx.cms.construction.Store._
+import org.qirx.cms.testing.MemoryStore
 
-class TestStore extends (Store ~> Future) {
+class TestStore extends MemoryStore {
 
+  /*
   type Storage = mutable.Map[String, JsObject]
   val storage = mutable.Map.empty[String, Storage]
 
@@ -52,7 +54,7 @@ class TestStore extends (Store ~> Future) {
 
       Future.successful(())
 
-    case SaveIdReference(metaId, id, newId) =>
+    case UpdateId(metaId, id, newId) =>
       idMappings += (id -> newId)
 
       Future.successful(())
@@ -80,4 +82,5 @@ class TestStore extends (Store ~> Future) {
           }
       Future.successful(documentsWithFields.toSeq)
   }
+  */
 }

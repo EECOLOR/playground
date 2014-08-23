@@ -144,9 +144,9 @@ class DocumentRequestHandler[O[_]](
 
   private def saveWithNewId(oldId: String, newId: String, document: JsObject) =
     for {
-      _ <- Store.SaveIdReference(metaId, oldId, newId)
+      _ <- Store.UpdateId(metaId, oldId, newId)
       _ <- save(newId, document)
-      _ <- Store.Delete(metaId, Some(oldId))
+      //_ <- Store.Delete(metaId, Some(oldId))
       _ <- Index.Delete(metaId, Some(oldId))
     } yield ok(idObj(newId))
 

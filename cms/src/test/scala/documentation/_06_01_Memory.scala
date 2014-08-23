@@ -17,6 +17,10 @@ object PrettyPrint {
     def print(t:T) = f(t)
   }
   
+  implicit def forBoolean = PrettyPrint[Boolean](_.toString)
+  
+  implicit def forString = PrettyPrint[String]("\"" + _ + "\"")
+  
   implicit def forJsValue = PrettyPrint[JsObject](Json.prettyPrint)
   
   implicit def forSeq[T](implicit pretty: PrettyPrint[T]) =
@@ -39,7 +43,7 @@ class _06_01_Memory extends Specification {
 
     val storeTester = new StoreTester[PrettyPrint]
 
-    val result = storeTester.test(MemoryStore)
+    val result = storeTester.test(new MemoryStore)
 
     result.foreach {
       case (description, result) =>

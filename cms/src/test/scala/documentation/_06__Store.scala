@@ -25,7 +25,7 @@ class _06__Store extends Specification {
           case List(metaId, fieldSet) => ???
           case Get(metaId, id, fieldSet) => ???
           case Save(metaId, id, document) => ???
-          case SaveIdReference(metaId, id, newId) => ???
+          case UpdateId(metaId, id, newId) => ???
           case GetActualId(metaId, id) => ???
           case Delete(metaId, id) => ???
           case Exists(metaId, id) => ???
@@ -53,7 +53,7 @@ class _06__Store extends Specification {
         |$customStoreCode
         |```""".stripMargin - {
 
-      val customStore = MemoryStore
+      val customStore = new MemoryStore
 
       """|To create a store implementation you can use the supplied `StoreTester`,
          |it will check if the store behaves as expected.
@@ -95,11 +95,14 @@ class _06__Store extends Specification {
         example {
           trait CustomTypeclass[T]
           object CustomTypeclass {
+            implicit val forBoolean: CustomTypeclass[Boolean] = null
             implicit val forJsObject: CustomTypeclass[JsObject] = null
             implicit val forJsObjectOption: CustomTypeclass[Option[JsObject]] = null
             implicit val forJsObjectSeq: CustomTypeclass[Seq[JsObject]] = null
             implicit def forJsObjectSeqMap:CustomTypeclass[Map[String, Seq[JsObject]]] = null
             implicit def forJsObjectOptionMap:CustomTypeclass[Map[String, Option[JsObject]]] = null
+            implicit val forStringSeq: CustomTypeclass[Seq[String]] = null
+            implicit val forBooleanSeq: CustomTypeclass[Seq[Boolean]] = null
           }
 
           val storeTester = new StoreTester[CustomTypeclass]
