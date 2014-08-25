@@ -25,12 +25,11 @@ class StoreTester[T[_]](
     ev5: T[Map[String, Option[JsObject]]],
     ev6: T[Seq[String]],
     ev7: T[Boolean],
-    ev8: T[Seq[Boolean]]
-    ): Seq[Result] = {
+    ev8: T[Seq[Boolean]]): Seq[Result] = {
 
     val t1 = "tests1"
     val t2 = "tests2"
-    
+
     val tests: Seq[(String, TestCode[Future[TestResult[T]]])] =
       Seq(
         "be empty for the tests to run correctly" -> testCode {
@@ -138,11 +137,19 @@ class StoreTester[T[_]](
 
         "be able to retrieve a single document partially" -> testCode {
           for {
-            d <- store(Get(t2, "non_empty", Set("extra")))
+            d1 <- store(Get(t2, "non_empty", Set("extra")))
+            d2 <- store(Get(t1, "empty", Set("extra")))
           } yield {
-            val e = Some(obj("extra" -> 2))
-            if (e == d) success
-            else failure(d, e)
+            val e1 = Some(obj("extra" -> 2))
+            val e2 = Some(obj())
+            if (e1 == d1 && e2 == d2) success
+            else failure(Map(
+              "non_empty" -> d1,
+              "empty" -> d2
+            ), Map(
+              "non_empty" -> e1,
+              "empty" -> e2
+            ))
           }
         },
 
@@ -217,17 +224,17 @@ class StoreTester[T[_]](
         },
 
         "return `false` when checking the existence of a non-existent document" -> testCode {
-         for {
-           b <- store(Exists(t1, "non_existent"))
-         } yield {
-           if (b == false) success
-           else failure(b, false)
-         }
+          for {
+            b <- store(Exists(t1, "non_existent"))
+          } yield {
+            if (b == false) success
+            else failure(b, false)
+          }
         },
-        
+
         "return `true` on existing documents" -> testCode {
           for {
-           b1 <- store(Exists(t1, "non_empty"))
+            b1 <- store(Exists(t1, "non_empty"))
             b2 <- store(Exists(t1, "non_empty_reference_1"))
             b3 <- store(Exists(t1, "non_empty_reference_2"))
             b4 <- store(Exists(t2, "non_empty"))
@@ -238,10 +245,10 @@ class StoreTester[T[_]](
             else failure(Seq(b1, b2, b3, b4, b5), Seq.fill(5)(true))
           }
         },
-        
+
         "be able to delete by id" -> testCode {
           for {
-            _ <- store(Delete(t2, Some("non_empty")))
+            _ <- store(Delete(t2, "non_empty_reference_3"))
             d1 <- store(List(t1))
             d2 <- store(List(t2))
           } yield {
@@ -263,7 +270,7 @@ class StoreTester[T[_]](
 
         "be able to delete all documents" -> testCode {
           for {
-            _ <- store(Delete(t1))
+            _ <- store(DeleteAll(t1))
             d1 <- store(List(t1))
             d2 <- store(List(t2))
           } yield {

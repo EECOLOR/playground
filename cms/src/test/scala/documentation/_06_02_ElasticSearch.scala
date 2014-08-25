@@ -9,14 +9,22 @@ import org.qirx.cms.testing.TestFailure
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.JsValue
 import testUtils.PrettyPrint
+import org.qirx.cms.stores.ElasticSearchStore
+import java.net.URI
+import play.api.libs.ws.WS
+import play.api.Play.current
+import play.api.test.Helpers
+import play.api.test.FakeApplication
 
-class _06_01_Memory extends Specification {
+class _06_02_ElasticSearch extends Specification {
 
-  "#The memory store should" - {
+  "#The ElasticSearch store should" - Helpers.running(FakeApplication()) {
 
     val storeTester = new StoreTester[PrettyPrint]
 
-    val result = storeTester.test(new MemoryStore)
+    val endpoint = "http://localhost:9200/test"
+    
+    val result = storeTester.test(new ElasticSearchStore(endpoint, WS.client))
 
     result.foreach {
       case (description, result) =>

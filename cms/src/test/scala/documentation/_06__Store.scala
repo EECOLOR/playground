@@ -28,6 +28,7 @@ class _06__Store extends Specification {
           case UpdateId(metaId, id, newId) => ???
           case GetActualId(metaId, id) => ???
           case Delete(metaId, id) => ???
+          case DeleteAll(metaId) => ???
           case Exists(metaId, id) => ???
         }
       }

@@ -118,13 +118,13 @@ class DocumentRequestHandler[O[_]](
       (requestId, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
       id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
-      _ <- Store.Delete(metaId, Some(id))
+      _ <- Store.Delete(metaId, id)
       _ <- Index.Delete(metaId, Some(id))
     } yield noContent
 
   private val deleteAll =
     for {
-      _ <- Store.Delete(metaId)
+      _ <- Store.DeleteAll(metaId)
       _ <- Index.Delete(metaId)
     } yield noContent
 

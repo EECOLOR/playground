@@ -34,6 +34,9 @@ class MemoryStore extends (Store ~> Future) {
     case Delete(metaId, id) =>
       Future successful storeFor(metaId).delete(id)
 
+    case DeleteAll(metaId) =>
+      Future successful storeFor(metaId).deleteAll
+      
     case Exists(metaId, id) =>
       Future successful storeFor(metaId).exists(id)
   }
@@ -79,9 +82,11 @@ class MemoryStore extends (Store ~> Future) {
       if (store contains id) Some(id)
       else idMappings.get(id).flatMap(getActualId)
 
-    def delete(id: Option[String]): Unit =
-      id.flatMap(getActualId).fold(ifEmpty = store.clear()) { id =>
-        store -= id
+      def deleteAll: Unit = store.clear()
+        
+    def delete(id: String): Unit =
+      getActualId(id).foreach { id =>
+        store -= id 
       }
 
     def exists(id: String): Boolean =
