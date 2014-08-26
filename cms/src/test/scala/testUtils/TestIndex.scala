@@ -50,12 +50,28 @@ class TestIndex extends (Index ~> Future) {
 
       Future.successful(())
 
+    case DeleteAll(metaId) =>
+      val store = storeFor(metaId)
+      store.clear()
+      
+      Future.successful(())
+      
     case Delete(metaId, id) =>
       val store = storeFor(metaId)
-      id.fold(ifEmpty = store.clear())(store -= _)
+      store -= id
 
       Future.successful(())
 
+    case UpdateId(metaId, id, newId) =>
+      val store = storeFor(metaId)
+      val document = store.get(id)
+      document.foreach { document =>
+        store -= id
+        store += (newId -> document)
+      }
+      
+      Future.successful(())
+      
     case Search(request, remainingPathSegments) =>
       val searchResult =
         obj(

@@ -37,17 +37,7 @@ class EvolvingStore(
       val version = obj(VERSION -> latestVersionFor(metaId))
       store(Save(metaId, id, document ++ version))
 
-    case exists: Exists =>
-      store(exists)
-
-    case updateId: UpdateId =>
-      store(updateId)
-
-    case getActualId: GetActualId =>
-      store(getActualId)
-
-    case delete: Delete =>
-      store(delete)
+    case other => store(other)
   }
 
   private def addVersion(fieldSet: Set[String]) =

@@ -6,6 +6,9 @@ import scala.concurrent.Future
 import scala.collection.mutable
 import play.api.libs.json.JsObject
 
+/**
+ * This class is not thread safe
+ */
 class MemoryStore extends (Store ~> Future) {
 
   import Store._
@@ -35,8 +38,8 @@ class MemoryStore extends (Store ~> Future) {
       Future successful storeFor(metaId).delete(id)
 
     case DeleteAll(metaId) =>
-      Future successful storeFor(metaId).deleteAll
-      
+      Future successful storeFor(metaId).deleteAll()
+
     case Exists(metaId, id) =>
       Future successful storeFor(metaId).exists(id)
   }
@@ -82,11 +85,11 @@ class MemoryStore extends (Store ~> Future) {
       if (store contains id) Some(id)
       else idMappings.get(id).flatMap(getActualId)
 
-      def deleteAll: Unit = store.clear()
-        
+    def deleteAll(): Unit = store.clear()
+
     def delete(id: String): Unit =
       getActualId(id).foreach { id =>
-        store -= id 
+        store -= id
       }
 
     def exists(id: String): Boolean =

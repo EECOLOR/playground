@@ -1,4 +1,4 @@
-package org.qirx.cms.stores
+package org.qirx.cms.elasticsearch
 
 import org.qirx.cms.construction.Store
 import org.qirx.cms.machinery.~>
@@ -44,7 +44,7 @@ class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: Execut
       storeFor(metaId).delete(id)
 
     case DeleteAll(metaId) =>
-      storeFor(metaId).deleteAll
+      storeFor(metaId).deleteAll()
 
     case Exists(metaId, id) =>
       storeFor(metaId).exists(id)
@@ -89,7 +89,7 @@ class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: Execut
     def getActualId(id: String): Future[Option[String]] =
       rawGet(id, Set.empty).map(extractId)
 
-    def deleteAll: Future[Unit] =
+    def deleteAll(): Future[Unit] =
       query
         .withBody(matchAllQuery)
         .withQueryString(refresh)
@@ -137,8 +137,11 @@ class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: Execut
       url.get.map(responseAsSeq).map(_.headOption)
     }
 
-    private val responseAsSeq: WSResponse => Seq[JsObject] =
-      response => (response.json \ "hits" \ "hits").as[Seq[JsObject]]
+    private val responseAsSeq: WSResponse => Seq[JsObject] = {
+      case response if response.status == 404 => Seq.empty
+      case response =>
+        (response.json \ "hits" \ "hits").as[Seq[JsObject]]
+    }
 
     private val extractId: Option[JsObject] => Option[String] =
       _ map { o => (o \ "_id").as[String] }

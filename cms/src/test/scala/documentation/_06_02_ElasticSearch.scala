@@ -9,12 +9,12 @@ import org.qirx.cms.testing.TestFailure
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.JsValue
 import testUtils.PrettyPrint
-import org.qirx.cms.stores.ElasticSearchStore
 import java.net.URI
 import play.api.libs.ws.WS
 import play.api.Play.current
 import play.api.test.Helpers
 import play.api.test.FakeApplication
+import org.qirx.cms.elasticsearch.ElasticSearchStore
 
 class _06_02_ElasticSearch extends Specification {
 
@@ -22,7 +22,7 @@ class _06_02_ElasticSearch extends Specification {
 
     val storeTester = new StoreTester[PrettyPrint]
 
-    val endpoint = "http://localhost:9200/test"
+    val endpoint = "http://localhost:9200/test_store"
     
     val result = storeTester.test(new ElasticSearchStore(endpoint, WS.client))
 

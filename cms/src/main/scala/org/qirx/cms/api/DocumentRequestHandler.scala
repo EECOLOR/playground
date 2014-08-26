@@ -119,13 +119,13 @@ class DocumentRequestHandler[O[_]](
       id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       _ <- Store.Delete(metaId, id)
-      _ <- Index.Delete(metaId, Some(id))
+      _ <- Index.Delete(metaId, id)
     } yield noContent
 
   private val deleteAll =
     for {
       _ <- Store.DeleteAll(metaId)
-      _ <- Index.Delete(metaId)
+      _ <- Index.DeleteAll(metaId)
     } yield noContent
 
   private val extractIdAndDocumentFromRequest =
@@ -147,7 +147,7 @@ class DocumentRequestHandler[O[_]](
       _ <- Store.UpdateId(metaId, oldId, newId)
       _ <- save(newId, document)
       //_ <- Store.Delete(metaId, Some(oldId))
-      _ <- Index.Delete(metaId, Some(oldId))
+      _ <- Index.Delete(metaId, oldId)
     } yield ok(idObj(newId))
 
   private def putInIndex(id: String, document: JsObject) =
