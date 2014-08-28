@@ -12,6 +12,6 @@ object Index {
   case class Put(metaId: String, id: String, document: JsObject) extends Index[Unit]
   case class Delete(metaId: String, id: String) extends Index[Unit]
   case class DeleteAll(metaId: String) extends Index[Unit]
-  case class UpdateId(metaId: String, id:String, newId:String) extends Index[Unit]
+  case class AddId(metaId: String, id:String, newId:String) extends Index[Unit]
   case class Search(request:Request[AnyContent], remainingPathSegments:Seq[String]) extends Index[Result]
 }

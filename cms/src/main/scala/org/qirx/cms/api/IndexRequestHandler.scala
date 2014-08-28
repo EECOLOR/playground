@@ -5,7 +5,6 @@ import play.api.mvc.Request
 import play.api.mvc.AnyContent
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.~>
-import org.qirx.cms.construction.Store
 import org.qirx.cms.construction.System
 import org.qirx.cms.construction.Metadata
 import org.qirx.cms.construction.Branch
@@ -30,9 +29,8 @@ class IndexRequestHandler[O[_]](
     implicit e: ProgramType[O],
     e1: System ~> O,
     e2: Index ~> O,
-    e3: Store ~> O,
-    e4: Metadata ~> O,
-    e5: Branch[Result]#T ~> O) {
+    e3: Metadata ~> O,
+    e4: Branch[Result]#T ~> O) {
 
   import BuildTools._
   import Results._
@@ -44,8 +42,7 @@ class IndexRequestHandler[O[_]](
       fieldSet <- GetFieldSetFromQueryString(request.queryString)
       (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone list(fieldSet)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
-      actualId <- Store.GetActualId(metaId, id) ifNone Return(notFound)
-      document <- Index.Get(metaId, actualId, fieldSet) ifNone Return(notFound)
+      document <- Index.Get(metaId, id, fieldSet) ifNone Return(notFound)
     } yield ok(document)
 
   private def list(fieldSet: Set[String]) =

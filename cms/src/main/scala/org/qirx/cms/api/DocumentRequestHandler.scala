@@ -79,8 +79,8 @@ class DocumentRequestHandler[O[_]](
 
   def put =
     for {
-      (requestId, document) <- extractIdAndDocumentFromRequest
-      id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
+      (id, document) <- extractIdAndDocumentFromRequest
+      _ <- Store.Exists(metaId, id) ifFalse Return(notFound)
       messages <- GetMessages(meta)
       results <- Validate(meta, document, messages) ifEmpty putDocument(id, document)
     } yield valitationResultsToResult(results)
@@ -96,8 +96,7 @@ class DocumentRequestHandler[O[_]](
 
   def patch =
     for {
-      (requestId, newDocument) <- extractIdAndDocumentFromRequest
-      id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
+      (id, newDocument) <- extractIdAndDocumentFromRequest
       oldDocument <- Store.Get(metaId, id) ifNone Return(notFound)
       merged <- Merge(oldDocument, newDocument)
       messages <- GetMessages(meta)
@@ -115,8 +114,8 @@ class DocumentRequestHandler[O[_]](
 
   def delete =
     for {
-      (requestId, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
-      id <- Store.GetActualId(metaId, requestId) ifNone Return(notFound)
+      (id, pathAfterId) <- GetNextSegment(pathAtDocument) ifNone deleteAll
+      _ <- Store.Exists(metaId, id) ifFalse Return(notFound)
       _ <- ValueOf(pathAfterId) ifNonEmpty Return(notFound)
       _ <- Store.Delete(metaId, id)
       _ <- Index.Delete(metaId, id)
@@ -144,10 +143,9 @@ class DocumentRequestHandler[O[_]](
 
   private def saveWithNewId(oldId: String, newId: String, document: JsObject) =
     for {
-      _ <- Store.UpdateId(metaId, oldId, newId)
+      _ <- Store.AddId(metaId, oldId, newId)
+      _ <- Index.AddId(metaId, oldId, newId)
       _ <- save(newId, document)
-      //_ <- Store.Delete(metaId, Some(oldId))
-      _ <- Index.Delete(metaId, oldId)
     } yield ok(idObj(newId))
 
   private def putInIndex(id: String, document: JsObject) =

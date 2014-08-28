@@ -34,7 +34,7 @@ class ElasticSearchIndex(endpoint: String, client: WSClient)(implicit ec: Execut
     case Get(metaId, id, fieldSet) =>
       indexFor(metaId).get(id, fieldSet)
 
-    case UpdateId(metaId, id, newId) =>
+    case AddId(metaId, id, newId) =>
       indexFor(metaId).updateId(id, newId)
 
     case Delete(metaId, id) =>

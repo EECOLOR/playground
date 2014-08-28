@@ -18,8 +18,7 @@ class IndexTester[T[_]](
   type Result = (String, TestResult[T])
 
   def test(index: Index ~> Future)(
-    implicit 
-    //ev1: T[JsObject],
+    implicit //ev1: T[JsObject],
     ev2: T[Option[JsObject]],
     ev3: T[Seq[JsObject]],
     ev4: T[Map[String, Seq[JsObject]]],
@@ -35,10 +34,17 @@ class IndexTester[T[_]](
       Seq(
         "be empty for the tests to run correctly" -> testCode {
           for {
-            d <- index(List(t1))
+            d1 <- index(List(t1))
+            d2 <- index(List(t2))
           } yield {
-            if (d.isEmpty) success
-            else TestFailure(d, Seq.empty)
+            if (d1.isEmpty && d2.isEmpty) success
+            else TestFailure(Map(
+              t1 -> d1,
+              t2 -> d2
+            ), Map(
+              t1 -> Seq.empty,
+              t2 -> Seq.empty
+            ))
           }
         },
 
@@ -154,33 +160,63 @@ class IndexTester[T[_]](
           }
         },
 
-        "accept updates of the id" -> testCode {
+        "accept additional ids" -> testCode {
           for {
-            _ <- index(UpdateId(t1, "non_empty", "non_empty_reference_1"))
-            _ <- index(UpdateId(t1, "non_empty_reference_1", "non_empty_reference_2"))
+            _ <- index(AddId(t1, "non_empty", "non_empty_reference_1"))
+            _ <- index(AddId(t1, "non_empty_reference_1", "non_empty_reference_2"))
           } yield success
         },
 
-        "return the correct document for the new id" -> testCode {
+        "return the correct document for both the id and old ids" -> testCode {
           for {
             d1 <- index(Get(t1, "non_empty"))
             d2 <- index(Get(t1, "non_empty_reference_1"))
             d3 <- index(Get(t1, "non_empty_reference_2"))
-            l <- index(List(t1))
           } yield {
-            println(l)
-            val e1 = None
-            val e2 = Some(non_empty_1)
-            if (e1 == d1 && e1 == d2 && e2 == d3) success
+            val e = Some(non_empty_1)
+            if (e == d1 && e == d2 && e == d3) success
             else failure(
               Map(
                 "non_empty" -> d1,
                 "non_empty_reference_1" -> d2,
                 "non_empty_reference_2" -> d3),
               Map(
-                "non_empty" -> e1,
-                "non_empty_reference_1" -> e1,
-                "non_empty_reference_2" -> e2
+                "non_empty" -> e,
+                "non_empty_reference_1" -> e,
+                "non_empty_reference_2" -> e
+              )
+            )
+          }
+        },
+
+        "be able to save using an old id" -> testCode {
+          for {
+            _ <- index(Put(t1, "non_empty", non_empty_3))
+            d <- index(Get(t1, "non_empty_reference_2"))
+          } yield {
+            val e = Some(non_empty_3)
+            if (e == d) success
+            else failure(d, e)
+          }
+        },
+
+        "keep references between metaId's separate" -> testCode {
+          for {
+            _ <- index(AddId(t2, "non_empty", "non_empty_reference_3"))
+            d1 <- index(Get(t1, "non_empty"))
+            d2 <- index(Get(t2, "non_empty"))
+          } yield {
+            val e1 = Some(non_empty_3)
+            val e2 = Some(non_empty_2)
+            if (e1 == d1 && e2 == d2) success
+            else failure(
+              Map(
+                t1 -> d1,
+                t2 -> d2
+              ),
+              Map(
+                t1 -> e1,
+                t2 -> e2
               )
             )
           }
@@ -188,11 +224,11 @@ class IndexTester[T[_]](
 
         "be able to delete by id" -> testCode {
           for {
-            _ <- index(Delete(t2, "non_empty"))
+            _ <- index(Delete(t2, "non_empty_reference_3"))
             d1 <- index(List(t1))
             d2 <- index(List(t2))
           } yield {
-            val e1 = Seq(empty, non_empty_1)
+            val e1 = Seq(empty, non_empty_3)
             val e2 = Seq.empty[JsObject]
 
             if (d1.diff(e1).isEmpty && d2.diff(e2).isEmpty) success
@@ -203,6 +239,49 @@ class IndexTester[T[_]](
               Map(
                 t1 -> e1,
                 t2 -> e2
+              )
+            )
+          }
+        },
+
+        "be able to delete using an old id" -> testCode {
+          for {
+            _ <- index(Delete(t1, "non_empty"))
+            d1 <- index(List(t1))
+            d2 <- index(List(t2))
+          } yield {
+            val e1 = Seq(empty)
+            val e2 = Seq.empty[JsObject]
+
+            if (d1.diff(e1).isEmpty && d2.diff(e2).isEmpty) success
+            else failure(
+              Map(
+                t1 -> d1,
+                t2 -> d2),
+              Map(
+                t1 -> e1,
+                t2 -> e2
+              )
+            )
+          }
+        },
+
+        "have removed old ids" -> testCode {
+          for {
+            _ <- index(Put(t1, "non_empty", non_empty_1))
+            d1 <- index(Get(t1, "non_empty_reference_1"))
+            d2 <- index(Get(t1, "non_empty_reference_2"))
+          } yield {
+            val e = None
+            if (d1 == e && d2 == e) success
+            else failure(
+              Map(
+                "non_empty_reference_1" -> d1,
+                "non_empty_reference_2" -> d1
+              ),
+              Map(
+                "non_empty_reference_1" -> e,
+                "non_empty_reference_2" -> e
               )
             )
           }
@@ -257,5 +336,6 @@ class IndexTester[T[_]](
   private val empty = obj()
   private val non_empty_1 = obj("non" -> "empty 1", "extra" -> 1)
   private val non_empty_2 = obj("non" -> "empty 2", "extra" -> 2)
+  private val non_empty_3 = obj("non" -> "empty 3", "extra" -> 3)
 
 }

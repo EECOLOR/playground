@@ -25,8 +25,7 @@ class _06__Store extends Specification {
           case List(metaId, fieldSet) => ???
           case Get(metaId, id, fieldSet) => ???
           case Save(metaId, id, document) => ???
-          case UpdateId(metaId, id, newId) => ???
-          case GetActualId(metaId, id) => ???
+          case AddId(metaId, id, newId) => ???
           case Delete(metaId, id) => ???
           case DeleteAll(metaId) => ???
           case Exists(metaId, id) => ???

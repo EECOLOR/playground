@@ -19,7 +19,6 @@ import play.api.mvc.Request
 
 class PublicApi(
   index: Index ~> Future,
-  store: Store ~> Future,
   metadata: Metadata ~> Id)(
     implicit val ec: ExecutionContext) extends Api {
 
@@ -33,7 +32,7 @@ class PublicApi(
     program.mergeBranch.foldMap(runner)
   }
 
-  private type Elements = ProgramType[(Base + Index + Store + Metadata + Branch[Result]#T)#T]
+  private type Elements = ProgramType[(Base + Index + Metadata + Branch[Result]#T)#T]
 
   /**
    * The implicit parameter determines the type of the resulting program
@@ -64,6 +63,6 @@ class PublicApi(
     val systemRunner = SystemToId andThen IdToFuture
     val metadataRunner = metadata andThen IdToFuture
 
-    index or store or systemRunner or metadataRunner
+    index or systemRunner or metadataRunner
   }
 }

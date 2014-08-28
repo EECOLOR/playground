@@ -15,7 +15,7 @@ import play.api.libs.ws.WSRequestHolder
 import play.api.libs.json.JsString
 import play.api.libs.ws.WSResponse
 
-class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: ExecutionContext) extends (Store ~> Future) {
+class ElasticSearchStore(endpoint: String, indexName: String, client: WSClient)(implicit ec: ExecutionContext) extends (Store ~> Future) {
 
   private val stores = mutable.Map.empty[String, DocumentStore]
 
@@ -34,11 +34,8 @@ class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: Execut
     case Get(metaId, id, fieldSet) =>
       storeFor(metaId).get(id, fieldSet)
 
-    case UpdateId(metaId, id, newId) =>
-      storeFor(metaId).updateId(id, newId)
-
-    case GetActualId(metaId, id) =>
-      storeFor(metaId).getActualId(id)
+    case AddId(metaId, id, newId) =>
+      storeFor(metaId).addId(id, newId)
 
     case Delete(metaId, id) =>
       storeFor(metaId).delete(id)
@@ -52,26 +49,30 @@ class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: Execut
 
   private class DocumentStore(metaId: String) {
 
-    private val currentEndpoint = endpoint + "/" + metaId
+    def typeEndpoint(typeName: String) = endpoint + "/" + indexName + "/" + typeName
 
-    private def path(path: String) = client.url(currentEndpoint + "/" + path)
-    private def withId(id: String) = path(id)
-    private val search = path("_search")
-    private val query = path("_query")
+    private val documentEndpoint = typeEndpoint(metaId)
+    private val idMappingsEndpoint = typeEndpoint("id_mappings")
 
-    def save(id: String, document: JsObject): Future[Unit] = {
-      val wrappedDocument =
-        obj(
-          "document" -> document,
-          "alternativeIds" -> arr()
-        )
+    private def documentPath = client.url(documentEndpoint)
+    private def documentWithPath(path: String) = client.url(documentEndpoint + "/" + path)
+    private val searchDocument = documentWithPath("_search")
+    private val queryDocument = documentWithPath("_query")
 
-      rawSave(id, wrappedDocument)
-    }
+    private def idMappingWithPath(path: String) = client.url(idMappingsEndpoint + "/" + path)
+
+    private val IDS = "ids"
+
+    def save(id: String, document: JsObject): Future[Unit] =
+      getIndexId(id)
+        .flatMap {
+          case Some(indexId) => overrideDocument(indexId, document)
+          case None => saveNewDocument(id, document)
+        }
 
     def list(fieldSet: Set[String]): Future[Seq[JsObject]] = {
 
-      var url = search
+      var url = searchDocument
       if (fieldSet.nonEmpty)
         url = url.withQueryString(fieldSetAsQueryString(fieldSet))
 
@@ -79,99 +80,113 @@ class ElasticSearchStore(endpoint: String, client: WSClient)(implicit ec: Execut
     }
 
     def get(id: String, fieldSet: Set[String]): Future[Option[JsObject]] =
-      rawGet(id, fieldSet).map(extractDocument)
+      getIndexId(id).flatMap {
+        case Some(indexId) =>
+          documentWithPath(indexId)
+            .withQueryString(fieldSetAsQueryString(fieldSet))
+            .get
+            .map(responseAsJsObject andThen extractDocument)
+        case None => futureOfNone
+      }
 
-    def updateId(id: String, newId: String): Future[Unit] = {
-      val updateDocumentId = updateId(id, newId, _: Option[JsObject])
-      rawGet(id, Set.empty).flatMap(updateDocumentId)
-    }
+    def addId(id: String, newId: String): Future[Unit] =
+      getIndexId(id).flatMap {
+        case Some(indexId) =>
+          idMappingWithPath(indexId + "/_update")
+            .withQueryString(refresh)
+            .post(
+              obj(
+                "script" -> "ctx._source.ids += id",
+                "params" -> obj("id" -> id)
 
-    def getActualId(id: String): Future[Option[String]] =
-      rawGet(id, Set.empty).map(extractId)
+              )
+            )
+            .map(toUnit)
+        case None => futureOfUnit
+      }
 
     def deleteAll(): Future[Unit] =
-      query
+      queryDocument
         .withBody(matchAllQuery)
         .withQueryString(refresh)
         .delete
-        .map { _ => () }
+        .map(toUnit)
 
     def delete(id: String): Future[Unit] =
-      withId(id)
-        .withQueryString(refresh)
-        .delete
-        .map { _ => () }
+      getIndexId(id).flatMap {
+        case Some(indexId) =>
+          documentWithPath(indexId)
+            .withQueryString(refresh)
+            .delete
+            .map(toUnit)
+        case None =>
+          Future successful (())
+      }
 
     def exists(id: String): Future[Boolean] =
-      rawGet(id, Set.empty).map { _.isDefined }
+      searchIdMappings(id).head.map(_.status == 200)
 
-    private def rawSave(id: String, document: JsObject): Future[Unit] =
-      withId(id)
-        .withQueryString(refresh)
-        .put(document)
-        .map { _ => () }
+    private val toUnit: Any => Unit = _ => ()
 
-    private def fieldSetAsQueryString(fieldSet: Set[String]) =
-      "_source" -> fieldSet.map("document." + _).mkString(",")
+    private def getIndexId(id: String): Future[Option[String]] =
+      searchIdMappings(id)
+        .get
+        .map(responseAsSeq andThen (_.headOption) andThen extractId)
 
-    private def findById(id: String) =
-      search
-        .withBody(
-          obj(
-            "query" -> obj(
-              "bool" -> obj(
-                "should" -> arr(
-                  obj("term" -> obj("_id" -> id)),
-                  obj("term" -> obj("alternativeIds" -> id))
-                )
-              )
-            )
+    private def searchIdMappings(id: String) =
+      idMappingWithPath("_search").withBody(
+        obj(
+          "query" -> obj(
+            "term" -> obj(IDS -> id)
           )
         )
-
-    private def rawGet(id: String, fieldSet: Set[String] = Set.empty) = {
-      var url = findById(id)
-      if (fieldSet.nonEmpty)
-        url = url.withQueryString(fieldSetAsQueryString(fieldSet))
-
-      url.get.map(responseAsSeq).map(_.headOption)
-    }
+      )
 
     private val responseAsSeq: WSResponse => Seq[JsObject] = {
-      case response if response.status == 404 => Seq.empty
-      case response =>
+      case response if response.status == 200 =>
         (response.json \ "hits" \ "hits").as[Seq[JsObject]]
+      case response => Seq.empty
     }
 
     private val extractId: Option[JsObject] => Option[String] =
       _ map { o => (o \ "_id").as[String] }
 
-    private val extractDocument: Option[JsObject] => Option[JsObject] =
-      _ map extractDocumentFromObject
+    private def overrideDocument(indexId: String, document: JsObject) =
+      documentWithPath(indexId)
+        .withQueryString(refresh)
+        .put(document)
+        .map { _ => () }
+
+    private def saveNewDocument(id: String, document: JsObject) =
+      storeNewDocument(document)
+        .flatMap(indexId => createIdMapping(indexId, id))
+        .map(toUnit)
+
+    private def storeNewDocument(document: JsObject) =
+      documentPath
+        .withQueryString(refresh)
+        .post(document)
+        .map(responseAsJsObject andThen (o => (o \ "_id").as[String]))
+
+    private def createIdMapping(indexId: String, id: String) =
+      idMappingWithPath(indexId)
+        .withQueryString(refresh)
+        .put(obj("ids" -> Seq(id)))
+
+    private val responseAsJsObject: WSResponse => JsObject =
+      _.json.as[JsObject]
 
     private val extractDocuments: Seq[JsObject] => Seq[JsObject] =
-      _ map extractDocumentFromObject
+      _.map(extractDocument).flatten
 
-    private def extractDocumentFromObject(o: JsObject) =
-      (o \ "_source" \ "document").asOpt[JsObject].getOrElse(obj())
+    private val extractDocument: JsObject => Option[JsObject] =
+      o => (o \ "_source").asOpt[JsObject]
 
-    private def updateId(id: String, newId: String, document: Option[JsObject]) =
-      document
-        .map { document =>
-          val existingAlternativeIds = (document \ "_source" \ "alternativeIds").as[JsArray]
-          val alternativeIds = existingAlternativeIds :+ JsString(id)
-          val newDocument =
-            obj(
-              "document" -> extractDocumentFromObject(document),
-              "alternativeIds" -> alternativeIds
-            )
+    private val futureOfNone = Future successful None
+    private val futureOfUnit = Future successful (())
 
-          for {
-            _ <- rawSave(newId, newDocument)
-            _ <- delete(id)
-          } yield ()
-        }
-        .getOrElse(Future successful (()))
+    private def fieldSetAsQueryString(fieldSet: Set[String]) =
+      "_source" -> fieldSet.map("document." + _).mkString(",")
 
     private val matchAllQuery =
       obj(

@@ -63,7 +63,7 @@ class Cms(
       .filter(_.nonEmpty)
 
   private lazy val privateApi = new PrivateApi(store, index, metadata, authentication)
-  private lazy val publicApi = new PublicApi(index, store, metadata)
+  private lazy val publicApi = new PublicApi(index, metadata)
   private lazy val metadataApi = new MetadataApi(metadata, authentication)
 
   private val determineApiFor: String => Api = {

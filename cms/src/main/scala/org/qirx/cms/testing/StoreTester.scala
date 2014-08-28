@@ -34,10 +34,17 @@ class StoreTester[T[_]](
       Seq(
         "be empty for the tests to run correctly" -> testCode {
           for {
-            d <- store(List(t1))
+            d1 <- store(List(t1))
+            d2 <- store(List(t2))
           } yield {
-            if (d.isEmpty) success
-            else TestFailure(d, Seq.empty)
+            if (d1.isEmpty && d2.isEmpty) success
+            else TestFailure(Map(
+              t1 -> d1,
+              t2 -> d2
+            ), Map(
+              t1 -> Seq.empty,
+              t2 -> Seq.empty
+            ))
           }
         },
 
@@ -153,10 +160,10 @@ class StoreTester[T[_]](
           }
         },
 
-        "accept updates of the id" -> testCode {
+        "accept additional ids" -> testCode {
           for {
-            _ <- store(UpdateId(t1, "non_empty", "non_empty_reference_1"))
-            _ <- store(UpdateId(t1, "non_empty_reference_1", "non_empty_reference_2"))
+            _ <- store(AddId(t1, "non_empty", "non_empty_reference_1"))
+            _ <- store(AddId(t1, "non_empty_reference_1", "non_empty_reference_2"))
           } yield success
         },
 
@@ -182,13 +189,24 @@ class StoreTester[T[_]](
           }
         },
 
+        "be able to save using an old id" -> testCode {
+          for {
+            _ <- store(Save(t1, "non_empty", non_empty_3))
+            d <- store(Get(t1, "non_empty_reference_2"))
+          } yield {
+            val e = Some(non_empty_3)
+            if (e == d) success
+            else failure(d, e)
+          }
+        },
+
         "keep references between metaId's separate" -> testCode {
           for {
-            _ <- store(UpdateId(t2, "non_empty", "non_empty_reference_3"))
+            _ <- store(AddId(t2, "non_empty", "non_empty_reference_3"))
             d1 <- store(Get(t1, "non_empty"))
             d2 <- store(Get(t2, "non_empty"))
           } yield {
-            val e1 = Some(non_empty_1)
+            val e1 = Some(non_empty_3)
             val e2 = Some(non_empty_2)
             if (e1 == d1 && e2 == d2) success
             else failure(
@@ -200,25 +218,6 @@ class StoreTester[T[_]](
                 t1 -> e1,
                 t2 -> e2
               )
-            )
-          }
-        },
-
-        "keep track of the actual id's" -> testCode {
-          for {
-            id1 <- store(GetActualId(t1, "non_empty"))
-            id2 <- store(GetActualId(t1, "non_empty_reference_1"))
-            id3 <- store(GetActualId(t1, "non_empty_reference_2"))
-            id4 <- store(GetActualId(t2, "non_empty"))
-            id5 <- store(GetActualId(t2, "non_empty_reference_3"))
-          } yield {
-            val e1 = Some("non_empty_reference_2")
-            val e2 = Some("non_empty_reference_3")
-            if (id1 == e1 && id2 == e1 && id3 == e1 && id4 == e2 && id5 == e2)
-              success
-            else failure(
-              Seq(id1, id2, id3, id4, id5).flatten,
-              Seq(e1, e1, e1, e2, e2).flatten
             )
           }
         },
@@ -252,7 +251,7 @@ class StoreTester[T[_]](
             d1 <- store(List(t1))
             d2 <- store(List(t2))
           } yield {
-            val e1 = Seq(empty, non_empty_1)
+            val e1 = Seq(empty, non_empty_3)
             val e2 = Seq.empty[JsObject]
 
             if (d1.diff(e1).isEmpty && d2.diff(e2).isEmpty) success
@@ -264,6 +263,43 @@ class StoreTester[T[_]](
                 t1 -> e1,
                 t2 -> e2
               )
+            )
+          }
+        },
+
+        "be able to delete using an old id" -> testCode {
+          for {
+            _ <- store(Delete(t1, "non_empty"))
+            d1 <- store(List(t1))
+            d2 <- store(List(t2))
+          } yield {
+            val e1 = Seq(empty)
+            val e2 = Seq.empty[JsObject]
+
+            if (d1.diff(e1).isEmpty && d2.diff(e2).isEmpty) success
+            else failure(
+              Map(
+                t1 -> d1,
+                t2 -> d2),
+              Map(
+                t1 -> e1,
+                t2 -> e2
+              )
+            )
+          }
+        },
+
+        "have removed old ids" -> testCode {
+          for {
+            _ <- store(Save(t1, "non_empty", non_empty_1))
+            b1 <- store(Exists(t1, "non_empty_reference_1"))
+            b2 <- store(Exists(t1, "non_empty_reference_2"))
+          } yield {
+            val e = false
+            if (b1 == e && b2 == e) success
+            else failure(
+              Seq(b1, b2),
+              Seq(false, false)
             )
           }
         },
@@ -287,25 +323,7 @@ class StoreTester[T[_]](
               )
             )
           }
-        },
-
-        "retrieving the actual id's should return None" -> testCode {
-          for {
-            id1 <- store(GetActualId(t1, "non_empty"))
-            id2 <- store(GetActualId(t1, "non_empty_reference_1"))
-            id3 <- store(GetActualId(t1, "non_empty_reference_2"))
-            id4 <- store(GetActualId(t2, "non_empty"))
-            id5 <- store(GetActualId(t2, "non_empty_reference_3"))
-          } yield {
-            val e = None
-            if (id1 == e && id2 == e && id3 == e && id4 == e && id5 == e) success
-            else failure(
-              Seq(id1, id2, id3, id4, id5).flatten,
-              Seq.empty
-            )
-          }
         }
-
       )
 
     val testsInSequence =
@@ -335,5 +353,6 @@ class StoreTester[T[_]](
   private val empty = obj()
   private val non_empty_1 = obj("non" -> "empty 1", "extra" -> 1)
   private val non_empty_2 = obj("non" -> "empty 2", "extra" -> 2)
+  private val non_empty_3 = obj("non" -> "empty 3", "extra" -> 3)
 
 }

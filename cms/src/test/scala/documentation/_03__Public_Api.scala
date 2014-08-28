@@ -118,7 +118,9 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
 
       "If a document is updated, this change is reflected in the index as well" - example {
         val updateTitle = obj("title" -> "Article 2")
-        PATCH("/article/article_1") using updateTitle
+        println("patch")
+        val r = PATCH("/article/article_1") using updateTitle
+        println(r)
 
         val (status, body) = GET from "/article/article_1?fields=id,title"
         status is 200

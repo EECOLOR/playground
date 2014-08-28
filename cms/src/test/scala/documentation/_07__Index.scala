@@ -24,7 +24,7 @@ class _07__Index extends Specification {
           case List(metaId, fieldSet) => ???
           case Get(metaId, id, fieldSet) => ???
           case Put(metaId, id, document) => ???
-          case UpdateId(metaId, id, newId) => ???
+          case AddId(metaId, id, newId) => ???
           case Delete(metaId, id) => ???
           case DeleteAll(metaId) => ???
           case Search(request, remainingPath) => ???

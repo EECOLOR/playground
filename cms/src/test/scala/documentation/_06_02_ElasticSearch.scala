@@ -22,9 +22,9 @@ class _06_02_ElasticSearch extends Specification {
 
     val storeTester = new StoreTester[PrettyPrint]
 
-    val endpoint = "http://localhost:9200/test_store"
+    val endpoint = "http://localhost:9200"
     
-    val result = storeTester.test(new ElasticSearchStore(endpoint, WS.client))
+    val result = storeTester.test(new ElasticSearchStore(endpoint, "test_store", WS.client))
 
     result.foreach {
       case (description, result) =>
