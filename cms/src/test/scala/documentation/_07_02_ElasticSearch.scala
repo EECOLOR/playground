@@ -20,9 +20,9 @@ class _07_02_ElasticSearch extends Specification {
 
     val indexTester = new IndexTester[PrettyPrint]
 
-    val endpoint = "http://localhost:9200/test_index"
+    val endpoint = "http://localhost:9200"
     
-    val result = indexTester.test(new ElasticSearchIndex(endpoint, WS.client))
+    val result = indexTester.test(new ElasticSearchIndex(endpoint, "test_index", WS.client))
 
     result.foreach {
       case (description, result) =>

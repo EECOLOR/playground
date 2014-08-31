@@ -96,12 +96,10 @@ class _06__Store extends Specification {
           trait CustomTypeclass[T]
           object CustomTypeclass {
             implicit val forBoolean: CustomTypeclass[Boolean] = null
-            implicit val forJsObject: CustomTypeclass[JsObject] = null
             implicit val forJsObjectOption: CustomTypeclass[Option[JsObject]] = null
             implicit val forJsObjectSeq: CustomTypeclass[Seq[JsObject]] = null
             implicit def forJsObjectSeqMap:CustomTypeclass[Map[String, Seq[JsObject]]] = null
             implicit def forJsObjectOptionMap:CustomTypeclass[Map[String, Option[JsObject]]] = null
-            implicit val forStringSeq: CustomTypeclass[Seq[String]] = null
             implicit val forBooleanSeq: CustomTypeclass[Seq[Boolean]] = null
           }
 

@@ -28,6 +28,9 @@ class MemoryIndex extends (Index ~> Future) {
     case Put(metaId, id, document) =>
       Future successful indexFor(metaId).save(id, document)
       
+    case Exists(metaId, id) =>
+      Future successful indexFor(metaId).exists(id)
+      
     case Delete(metaId, id) =>
       Future successful indexFor(metaId).delete(id)
       

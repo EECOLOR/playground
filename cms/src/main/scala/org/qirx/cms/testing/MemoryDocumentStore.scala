@@ -45,7 +45,10 @@ class MemoryDocumentStore {
       idMappings += (newId -> actualId)
     }
 
-  def deleteAll(): Unit = store.clear()
+  def deleteAll(): Unit = {
+    store.clear()
+    idMappings.clear()
+  }
 
   def delete(id: String): Unit =
     idMappings.get(id).foreach { id =>
