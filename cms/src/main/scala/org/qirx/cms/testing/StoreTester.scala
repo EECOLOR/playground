@@ -42,7 +42,7 @@ class StoreTester[T[_]](
         store(DeleteAll(metaId))
     }
     
-    val tests = new Tests[T](wrapper)
+    val tests = new StoreTests[T](wrapper)
 
     Await.result(tests.results, 2.second)
   }

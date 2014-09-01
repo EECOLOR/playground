@@ -1,20 +1,20 @@
 package org.qirx.cms.metadata.dsl
 
 import org.qirx.cms.i18n.Messages
-
 import play.api.libs.json.JsArray
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
+import org.qirx.cms.metadata.PropertyMetadata
 
 trait Identifiable { self: Property =>
-  private def set(nonEmpty: Boolean) = new ValueSetProperty(self, nonEmpty)
+  private def set(nonEmpty: Boolean) = new ValueSetProperty[this.type](self, nonEmpty)
   //def + = set(nonEmpty = true)
   def * = set(nonEmpty = false)
 }
 
-class ValueSetProperty(property: Property with Identifiable, nonEmpty: Boolean)
-  extends WrappedProperty(property) with PropertyValidation {
+class ValueSetProperty[T <: PropertyMetadata with Identifiable](property: T, nonEmpty: Boolean)
+  extends WrappedProperty[T](property) with PropertyValidation {
 
   final val generator = None
   
@@ -34,7 +34,7 @@ class ValueSetProperty(property: Property with Identifiable, nonEmpty: Boolean)
   
   protected def validateArray(messages:Messages, array:JsArray):Option[JsObject] = {
     val values = array.as[Seq[JsValue]]
-    val errors = values.flatMap(property.validate(messages, _))
+    val errors = values.flatMap(value => property.validate(messages, Some(value)))
     if (errors.isEmpty) None
     else Some(errorObj(errors))
   }

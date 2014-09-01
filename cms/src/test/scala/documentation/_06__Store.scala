@@ -14,6 +14,7 @@ import scala.reflect.ClassTag
 import play.api.libs.json.JsObject
 import org.qirx.cms.testing.TestResult
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import org.qirx.cms.testing.TypeclassMagnet
 
 class _06__Store extends Specification {
   "#The Store" - {
@@ -62,7 +63,8 @@ class _06__Store extends Specification {
          |the type. Most frameworks make use of typeclasses to help with this. 
          |
          |The store tester allows for typeclasses to be attached to the failures.
-         |By default the `ClassTag` is attached.""".stripMargin -
+         |By default the `TypeclassMagnet.None` is attached, which does not 
+         |contain any information.""".stripMargin -
         example {
           val storeTester = new StoreTester
 
@@ -77,8 +79,8 @@ class _06__Store extends Specification {
                 onFailure = {
                   case failure @ TestFailure(value, expectedValue) =>
                     // use the typeclass to get more information about the type
-                    val className = failure.typeclass.runtimeClass.getName
-                  // report failure using your favorite test framework
+                    val none: TypeclassMagnet.None[_] = failure.typeclass
+                    // report failure using your favorite test framework
                 }
               )
           }
@@ -98,8 +100,8 @@ class _06__Store extends Specification {
             implicit val forBoolean: CustomTypeclass[Boolean] = null
             implicit val forJsObjectOption: CustomTypeclass[Option[JsObject]] = null
             implicit val forJsObjectSeq: CustomTypeclass[Seq[JsObject]] = null
-            implicit def forJsObjectSeqMap:CustomTypeclass[Map[String, Seq[JsObject]]] = null
-            implicit def forJsObjectOptionMap:CustomTypeclass[Map[String, Option[JsObject]]] = null
+            implicit def forJsObjectSeqMap: CustomTypeclass[Map[String, Seq[JsObject]]] = null
+            implicit def forJsObjectOptionMap: CustomTypeclass[Map[String, Option[JsObject]]] = null
             implicit val forBooleanSeq: CustomTypeclass[Seq[Boolean]] = null
           }
 

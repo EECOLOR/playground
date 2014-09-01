@@ -12,17 +12,12 @@ object Document {
   def apply(id: String, idField: String)(properties: (String, PropertyMetadata)*): DocumentMetadata =
     DefaultDocument(id, idField, ListMap(properties: _*))
 
-  private case class DefaultDocument(
-    id: String,
-    idField: String,
-    properties: ListMap[String, PropertyMetadata],
-    evolutions: Evolutions = new Evolutions(Seq.empty)) extends DocumentMetadata {
-
+  trait IdFieldGenerator { self: DocumentMetadata =>
+    val idField:String
     val idGenerator = new DefaultDocumentIdGenerator(idField)
-
-    def withEvolutions(evolutions: Evolution*) =
-      copy(evolutions = this.evolutions.withEvolutions(evolutions))
-
+  }
+  
+  trait ToJson { self: DocumentMetadata =>
     lazy val toJson =
       obj(
         "id" -> id,
@@ -30,5 +25,16 @@ object Document {
           case (name, property) => property.toJson ++ obj("name" -> name)
         }
       )
+  }
+    
+  private case class DefaultDocument(
+    id: String,
+    idField: String,
+    properties: ListMap[String, PropertyMetadata],
+    evolutions: Evolutions = new Evolutions(Seq.empty)) 
+    extends DocumentMetadata with IdFieldGenerator with ToJson {
+
+    def withEvolutions(evolutions: Evolution*) =
+      copy(evolutions = this.evolutions.withEvolutions(evolutions))
   }
 }

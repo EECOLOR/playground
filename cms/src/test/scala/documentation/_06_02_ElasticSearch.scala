@@ -14,7 +14,7 @@ import play.api.libs.ws.WS
 import play.api.Play.current
 import play.api.test.Helpers
 import play.api.test.FakeApplication
-import org.qirx.cms.elasticsearch.ElasticSearchStore
+import org.qirx.cms.elasticsearch
 
 class _06_02_ElasticSearch extends Specification {
 
@@ -24,7 +24,7 @@ class _06_02_ElasticSearch extends Specification {
 
     val endpoint = "http://localhost:9200"
     
-    val result = storeTester.test(new ElasticSearchStore(endpoint, "test_store", WS.client))
+    val result = storeTester.test(new elasticsearch.Store(endpoint, "test_store", WS.client))
 
     result.foreach {
       case (description, result) =>

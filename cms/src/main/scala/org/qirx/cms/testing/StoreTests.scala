@@ -6,7 +6,7 @@ import scala.concurrent.ExecutionContext
 import scala.language.higherKinds
 import scala.concurrent.Future
 
-class Tests[T[_]](storeWrapper: StoreWrapper)(
+class StoreTests[T[_]](storeWrapper: StoreWrapper)(
   implicit ec: ExecutionContext,
   ev1: T[Map[String, Seq[JsObject]]],
   ev2: T[Seq[JsObject]],
@@ -21,6 +21,7 @@ class Tests[T[_]](storeWrapper: StoreWrapper)(
   val t2 = "tests2"
 
   private val empty = obj()
+  private val non_empty = obj("non" -> "empty")
   private val non_empty_1 = obj("non" -> "empty 1", "extra" -> 1)
   private val non_empty_2 = obj("non" -> "empty 2", "extra" -> 2)
   private val non_empty_3 = obj("non" -> "empty 3", "extra" -> 3)
@@ -91,7 +92,7 @@ class Tests[T[_]](storeWrapper: StoreWrapper)(
   private def acceptNonEmptyDocument =
     "accept a non-empty document" -> testCode {
       for {
-        _ <- save(t1, "non_empty", obj("some" -> "object"))
+        _ <- save(t1, "non_empty", non_empty)
       } yield success
     }
 

@@ -105,4 +105,14 @@ object RichContent extends RichContent("rich_content",
 ) {
 
   val defaultAllowedElements = allowedElements
+  
+  def extractText(a:JsArray):String = a.value.foldLeft("") { 
+    case (acc, JsString(string)) => acc + string
+    case (acc, obj:JsObject) => 
+      val text = (obj \ "text").asOpt[String]
+      val children = (obj \ "children").asOpt[JsArray]
+      
+      acc + text.getOrElse("") + children.map(extractText).getOrElse("")
+    case (acc, _) => acc
+  }
 }

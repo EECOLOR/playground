@@ -6,7 +6,7 @@ import play.api.libs.json.JsObject
 import org.qirx.cms.i18n.Messages
 import play.api.libs.json.Json.obj
 
-class ConfidentialProperty(property: PropertyMetadata) extends PropertyMetadata {
+class ConfidentialProperty[T <: PropertyMetadata](property: T) extends PropertyMetadata {
   final val id = property.id
   final val confidential = true
   final val generator = None
@@ -18,5 +18,5 @@ class ConfidentialProperty(property: PropertyMetadata) extends PropertyMetadata 
 }
 
 object Confidential {
-  def apply(property: PropertyMetadata) = new ConfidentialProperty(property)
+  def apply[T <: PropertyMetadata](property: T) = new ConfidentialProperty(property)
 }

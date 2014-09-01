@@ -7,7 +7,7 @@ import play.api.libs.json.Json.obj
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
-class ElasticSearchDocumentStore(
+class DocumentStore(
   endpoint: String,
   indexName: String,
   metaId: String,

@@ -6,7 +6,7 @@ import play.api.libs.json.JsObject
 import play.api.libs.json.Json.obj
 import org.qirx.cms.i18n.Messages
 
-class OptionalValueProperty(property: PropertyMetadata)
+class OptionalValueProperty[T <: PropertyMetadata](property: T)
   extends WrappedProperty(property) {
 
   final val generator = None

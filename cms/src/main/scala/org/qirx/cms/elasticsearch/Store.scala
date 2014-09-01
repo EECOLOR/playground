@@ -1,6 +1,6 @@
 package org.qirx.cms.elasticsearch
 
-import org.qirx.cms.construction.Store
+import org.qirx.cms.construction.{Store => CmsStore}
 import org.qirx.cms.machinery.~>
 import scala.concurrent.Future
 import scala.collection.mutable
@@ -15,15 +15,15 @@ import play.api.libs.ws.WSRequestHolder
 import play.api.libs.json.JsString
 import play.api.libs.ws.WSResponse
 
-class ElasticSearchStore(endpoint: String, indexName: String, client: WSClient)(implicit ec: ExecutionContext) extends (Store ~> Future) {
+class Store(endpoint: String, indexName: String, client: WSClient)(implicit ec: ExecutionContext) extends (CmsStore ~> Future) {
 
-  private val stores = mutable.Map.empty[String, ElasticSearchDocumentStore]
+  private val stores = mutable.Map.empty[String, DocumentStore]
 
   private def storeFor(metaId: String) =
     stores.getOrElseUpdate(metaId,
-      new ElasticSearchDocumentStore(endpoint, indexName, metaId, client))
+      new DocumentStore(endpoint, indexName, metaId, client))
 
-  import Store._
+  import CmsStore._
 
   def transform[x] = {
     case List(metaId, fieldSet) =>

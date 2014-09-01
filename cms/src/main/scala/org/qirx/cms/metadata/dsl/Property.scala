@@ -11,7 +11,7 @@ abstract class Property(val id: String) extends PropertyMetadata with PropertyVa
 
   val generator = None
 
-  def ? = new OptionalValueProperty(this)
+  def ? = new OptionalValueProperty[this.type](this)
 
   def validate(messages: Messages, value: JsValue): Option[JsObject]
 

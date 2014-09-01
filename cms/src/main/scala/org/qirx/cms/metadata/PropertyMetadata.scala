@@ -4,6 +4,8 @@ import play.api.libs.json.JsValue
 import play.api.libs.json.JsObject
 import org.qirx.cms.i18n.Messages
 import play.api.libs.json.Writes
+import scala.language.higherKinds
+import org.qirx.cms.testing.TypeclassMagnet
 
 trait PropertyMetadata {
   def id: String

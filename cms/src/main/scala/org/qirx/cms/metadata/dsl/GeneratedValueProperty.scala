@@ -8,11 +8,11 @@ import play.api.libs.json.JsObject
 import play.api.libs.json.Json.obj
 
 trait GeneratableValue { self: PropertyMetadata =>
-  def generated = new GeneratedValueProperty(self)
+  def generated = new GeneratedValueProperty[this.type](self)
   def generate: JsValue
 }
 
-class GeneratedValueProperty(property: PropertyMetadata with GeneratableValue)
+class GeneratedValueProperty[T <: PropertyMetadata with GeneratableValue](property: T)
   extends WrappedProperty(property) with PropertyValidation {
 
   //def once:GeneratedValueProperty = ???

@@ -1,17 +1,20 @@
 package documentation
 
-import org.qirx.littlespec.Specification
+import scala.concurrent.Future
+
 import org.qirx.cms.construction.Index
 import org.qirx.cms.machinery.~>
-import testUtils.codeString
-import testUtils.cmsName
-import play.api.libs.json.JsObject
-import scala.concurrent.Future
-import org.qirx.cms.testing.MemoryIndex
 import org.qirx.cms.testing.IndexTester
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import org.qirx.cms.testing.TestResult
+import org.qirx.cms.testing.MemoryIndex
 import org.qirx.cms.testing.TestFailure
+import org.qirx.cms.testing.TestResult
+import org.qirx.cms.testing.TypeclassMagnet
+import org.qirx.littlespec.Specification
+
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.json.JsObject
+import testUtils.cmsName
+import testUtils.codeString
 
 class _07__Index extends Specification {
 
@@ -23,6 +26,7 @@ class _07__Index extends Specification {
         def transform[x] = {
           case List(metaId, fieldSet) => ???
           case Get(metaId, id, fieldSet) => ???
+          case Exists(metaId, id) => ???
           case Put(metaId, id, document) => ???
           case AddId(metaId, id, newId) => ???
           case Delete(metaId, id) => ???
@@ -52,7 +56,8 @@ class _07__Index extends Specification {
          |is completely dependent on your index implementation.
          |
          |The index tester allows for typeclasses to be attached to the failures.
-         |By default the `ClassTag` is attached.""".stripMargin -
+         |By default the `TypeclassMagnet.None` is attached, which does not 
+         |contain any information.""".stripMargin -
         example {
           val indexTester = new IndexTester
 
@@ -67,8 +72,8 @@ class _07__Index extends Specification {
                 onFailure = {
                   case failure @ TestFailure(value, expectedValue) =>
                     // use the typeclass to get more information about the type
-                    val className = failure.typeclass.runtimeClass.getName
-                  // report failure using your favorite test framework
+                    val none:TypeclassMagnet.None[_] = failure.typeclass
+                    // report failure using your favorite test framework
                 }
               )
           }
@@ -86,12 +91,10 @@ class _07__Index extends Specification {
           trait CustomTypeclass[T]
           object CustomTypeclass {
             implicit val forBoolean: CustomTypeclass[Boolean] = null
-            implicit val forJsObject: CustomTypeclass[JsObject] = null
             implicit val forJsObjectOption: CustomTypeclass[Option[JsObject]] = null
             implicit val forJsObjectSeq: CustomTypeclass[Seq[JsObject]] = null
             implicit def forJsObjectSeqMap: CustomTypeclass[Map[String, Seq[JsObject]]] = null
             implicit def forJsObjectOptionMap: CustomTypeclass[Map[String, Option[JsObject]]] = null
-            implicit val forStringSeq: CustomTypeclass[Seq[String]] = null
             implicit val forBooleanSeq: CustomTypeclass[Seq[Boolean]] = null
           }
 
@@ -104,5 +107,4 @@ class _07__Index extends Specification {
         }
     }
   }
-
 }
