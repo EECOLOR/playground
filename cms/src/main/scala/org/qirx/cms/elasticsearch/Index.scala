@@ -27,6 +27,47 @@ class Index(
   deleteIndex()
   createIndexWithMappings()
 
+  lazy val documentMetadataMap = 
+    documentMetadata.map(document => document.id -> document).toMap
+  
+  private val indexes = mutable.Map.empty[String, DocumentStore]
+
+  private def indexFor(metaId: String) =
+    indexes.getOrElseUpdate(metaId,
+      new DocumentStore(endpoint, indexName, metaId, client))
+
+  import CmsIndex._
+
+  def transform[x] = {
+    case List(metaId, fieldSet) =>
+      indexFor(metaId).list(fieldSet)
+
+    case Put(metaId, id, document) =>
+      val meta = documentMetadataMap.get(metaId)
+      val transformedDocument = 
+        meta.map(_.transform(document)).getOrElse(document)
+        
+      indexFor(metaId).save(id, transformedDocument)
+
+    case Get(metaId, id, fieldSet) =>
+      indexFor(metaId).get(id, fieldSet)
+
+    case AddId(metaId, id, newId) =>
+      indexFor(metaId).addId(id, newId)
+
+    case Exists(metaId, id) =>
+      indexFor(metaId).exists(id)
+
+    case Delete(metaId, id) =>
+      indexFor(metaId).delete(id)
+
+    case DeleteAll(metaId) =>
+      indexFor(metaId).deleteAll()
+
+    case Search(request, remainingPath) =>
+      ???
+  }
+
   private def deleteIndex() = {
     val response =
       client
@@ -57,37 +98,4 @@ class Index(
     }
   }
 
-  private val indexes = mutable.Map.empty[String, DocumentStore]
-
-  private def indexFor(metaId: String) =
-    indexes.getOrElseUpdate(metaId,
-      new DocumentStore(endpoint, indexName, metaId, client))
-
-  import CmsIndex._
-
-  def transform[x] = {
-    case List(metaId, fieldSet) =>
-      indexFor(metaId).list(fieldSet)
-
-    case Put(metaId, id, document) =>
-      indexFor(metaId).save(id, document)
-
-    case Get(metaId, id, fieldSet) =>
-      indexFor(metaId).get(id, fieldSet)
-
-    case AddId(metaId, id, newId) =>
-      indexFor(metaId).addId(id, newId)
-
-    case Exists(metaId, id) =>
-      indexFor(metaId).exists(id)
-
-    case Delete(metaId, id) =>
-      indexFor(metaId).delete(id)
-
-    case DeleteAll(metaId) =>
-      indexFor(metaId).deleteAll()
-
-    case Search(request, remainingPath) =>
-      ???
-  }
 }

@@ -48,6 +48,11 @@ object Document {
         "properties" -> (propertyMappings ++ idMapping)
       )
     )
+
+    def transform(document: JsObject): JsObject =
+      properties.foldLeft(document) {
+        case (document, (name, property)) => property.transform(name, document)
+      }
   }
 
   object Implicits {
@@ -66,7 +71,7 @@ object Document {
         lazy val toJson = property.toJson
 
         def mappings(name: String) = indexInfo.mappings(name)
-        def converter(name: String) = indexInfo.converter(name)
+        def transform(name: String, document:JsObject) = indexInfo.transform(name, document)
       }
   }
 }

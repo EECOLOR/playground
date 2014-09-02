@@ -19,11 +19,11 @@ import org.qirx.cms.metadata.dsl.ConfidentialProperty
 
 trait IndexInfo[-T] {
   def mappings(propertyName: String): Seq[JsObject]
-  def converter(propertyName: String): JsObject => JsObject
+  def transform(propertyName: String, document: JsObject): JsObject
 }
 
 trait SimpleIndexInfo[-T] extends IndexInfo[T] {
-  def converter(name: String) = identity
+  def transform(propertyName: String, document: JsObject): JsObject = document
   def mappings(name: String) = Seq(obj(name -> mapping))
   def mapping: JsObject
 }
@@ -60,31 +60,31 @@ object IndexInfo extends LowerPriorityIndexInfo {
         )
       ),
       obj(
-        (name + ".text") -> obj(
+        (name + "_text") -> obj(
           "type" -> "string"
         )
       )
     )
 
-    def converter(name: String) = { o =>
-      val value = (o \ name).asOpt[JsArray]
+    def transform(name: String, document:JsObject) = {
+      val value = (document \ name).asOpt[JsArray]
       value
-        .map(addTextValue(name, o))
-        .getOrElse(o)
+        .map(addTextValue(name, document))
+        .getOrElse(document)
     }
 
     private def addTextValue(name: String, o: JsObject)(value: JsArray) =
-      o ++ obj(name + ".text" -> RichContent.extractText(value))
+      o ++ obj(name + "_text" -> RichContent.extractText(value))
   }
 
   class WrappingMapping[T](wrapped: IndexInfo[_]) extends IndexInfo[T] {
-    def converter(name: String) = wrapped.converter(name)
+    def transform(name: String, document: JsObject) = wrapped.transform(name, document)
     def mappings(name: String) = wrapped.mappings(name)
   }
 
   implicit object confidential extends IndexInfo[ConfidentialProperty[_]] {
     def mappings(propertyName: String) = Seq.empty
-    def converter(propertyName: String) = identity
+    def transform(propertyName: String, document: JsObject) = document
   }
 
   implicit def optional[T <: PropertyMetadata](implicit m: IndexInfo[T]) =

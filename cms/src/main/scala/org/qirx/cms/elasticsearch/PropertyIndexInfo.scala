@@ -4,5 +4,5 @@ import play.api.libs.json.JsObject
 
 trait PropertyIndexInfo {
   def mappings(name:String):Seq[JsObject]
-  def converter(name:String):JsObject => JsObject
+  def transform(name:String, document:JsObject):JsObject
 }
