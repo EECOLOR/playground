@@ -14,6 +14,8 @@ import play.api.libs.ws.WS
 import play.api.Play.current
 import org.qirx.cms.elasticsearch
 import play.api.test.Helpers
+import play.api.test.Helpers.contentAsJson
+import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.FakeApplication
 import org.qirx.cms.metadata.properties.Label
 import org.qirx.cms.metadata.properties.Tag
@@ -36,6 +38,10 @@ import testUtils.cmsName
 import com.ning.http.client.AsyncHttpClientConfig
 import play.api.libs.ws.ning.NingWSClient
 import play.api.libs.json.JsArray
+import play.api.libs.ws.WSClient
+import testUtils.TestClient
+import testUtils.TestResponse
+import play.api.test.FakeRequest
 
 class _07_02_ElasticSearch extends Specification with Example {
 
@@ -73,6 +79,7 @@ class _07_02_ElasticSearch extends Specification with Example {
 
         val index = new elasticsearch.Index(documents, endpoint, indexName, client)
       }.withSpecification { body =>
+        val documents = body.documents
         val index = body.index
         val indexName = body.indexName
         val endpoint = body.endpoint
@@ -197,9 +204,52 @@ class _07_02_ElasticSearch extends Specification with Example {
           client.close()
           success
         }
+
+        """|The index provides search handling that will act as a proxy to the 
+           |Elastic Search `_search` endpoint.""".stripMargin - example {
+          import org.qirx.cms.elasticsearch
+          import elasticsearch.Document.Implicits.propertyWithIndexInfo
+
+          val response = new TestResponse(json =
+            obj(
+              "hits" -> obj(
+                "total" -> 1,
+                "hits" -> arr(
+                  obj("_id" -> "some id")
+                )
+              )
+            )
+          )
+          val testClient = new TestClient(response)
+
+          val index = new elasticsearch.Index(documents, endpoint, indexName, testClient)
+
+          val path = "article"
+
+          val result = contentAsJson(index(Index.Search(FakeRequest("GET", "/ignored"), Seq(path))))
+
+          val calledUrl = testClient.lastRequestHolder.url
+
+          """|Calling `Search` with a request and `Seq($path)` as 
+             |remaining path segments results in the following call to 
+             |Elastic Search:""".stripMargin - example {
+            calledUrl is s"$endpoint/$indexName/article/_search"
+          }
+
+          """|Note that the search method will extract the `"hits"` element
+             |from the result""".stripMargin - example {
+            result is obj(
+              "total" -> 1,
+              "hits" -> arr(
+                obj("_id" -> "some id")
+              )
+            )
+          }
+
+          "headers, querystring, body, etc" - {}
+        }
       }
 
-    "search" - {}
     "count" - {}
 
     "test different mappings (json)" - {}

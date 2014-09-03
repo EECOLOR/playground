@@ -17,6 +17,8 @@ import play.api.libs.ws.WSResponse
 import org.qirx.cms.metadata.DocumentMetadata
 import scala.concurrent.duration._
 import scala.concurrent.Await
+import play.api.mvc.Results
+import play.api.libs.json.JsValue
 
 class Index(
   documentMetadata: Seq[DocumentMetadata with DocumentMapping],
@@ -27,9 +29,9 @@ class Index(
   deleteIndex()
   createIndexWithMappings()
 
-  lazy val documentMetadataMap = 
+  lazy val documentMetadataMap =
     documentMetadata.map(document => document.id -> document).toMap
-  
+
   private val indexes = mutable.Map.empty[String, DocumentStore]
 
   private def indexFor(metaId: String) =
@@ -44,9 +46,9 @@ class Index(
 
     case Put(metaId, id, document) =>
       val meta = documentMetadataMap.get(metaId)
-      val transformedDocument = 
+      val transformedDocument =
         meta.map(_.transform(document)).getOrElse(document)
-        
+
       indexFor(metaId).save(id, transformedDocument)
 
     case Get(metaId, id, fieldSet) =>
@@ -65,7 +67,13 @@ class Index(
       indexFor(metaId).deleteAll()
 
     case Search(request, remainingPath) =>
-      ???
+      client
+        .url(endpoint + "/" + indexName + "/" + remainingPath.mkString("/") + "/_search")
+        .get
+        .map { response =>
+          new Results.Status(response.status)
+            .apply((response.json \ "hits").as[JsValue])
+        }
   }
 
   private def deleteIndex() = {
