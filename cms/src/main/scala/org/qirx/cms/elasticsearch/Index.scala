@@ -19,6 +19,11 @@ import scala.concurrent.duration._
 import scala.concurrent.Await
 import play.api.mvc.Results
 import play.api.libs.json.JsValue
+import play.api.mvc.Request
+import play.api.libs.ws.EmptyBody
+import play.api.libs.ws.InMemoryBody
+import play.api.mvc.Request
+import play.api.mvc.AnyContent
 
 class Index(
   documentMetadata: Seq[DocumentMetadata with DocumentMapping],
@@ -67,13 +72,43 @@ class Index(
       indexFor(metaId).deleteAll()
 
     case Search(request, remainingPath) =>
-      client
-        .url(endpoint + "/" + indexName + "/" + remainingPath.mkString("/") + "/_search")
-        .get
-        .map { response =>
-          new Results.Status(response.status)
-            .apply((response.json \ "hits").as[JsValue])
-        }
+      proxy(
+        request,
+        remainingPath,
+        "_search",
+        json => (json \ "hits").as[JsValue])
+
+    case Count(request, remainingPath) =>
+      proxy(
+        request,
+        remainingPath,
+        "_count",
+        json => obj("count" -> (json \ "count").as[JsValue]))
+  }
+
+  private def proxy(
+    request: Request[AnyContent],
+    remainingPath: Seq[String],
+    suffix: String,
+    convertResponse: JsValue => JsValue) = {
+
+    val queryString = request.queryString.toSeq.flatMap {
+      case (key, value) => value.map(key -> _)
+    }
+
+    val wsRequest = client
+      .url(endpoint + "/" + indexName + "/" + remainingPath.map(_ + "/").mkString + suffix)
+      .withQueryString(queryString: _*)
+
+    val requestWithBody = request.body.asJson
+      .fold(ifEmpty = wsRequest withBody EmptyBody)(wsRequest withBody _)
+
+    requestWithBody
+      .get
+      .map { response =>
+        new Results.Status(response.status)
+          .apply(convertResponse(response.json))
+      }
   }
 
   private def deleteIndex() = {

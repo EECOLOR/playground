@@ -25,7 +25,7 @@ class PublicApi(
   import BuildTools._
   import ExecutionTools._
   import Results._
-  
+
   def handleRequest(pathSegments: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathSegments)
@@ -43,6 +43,7 @@ class PublicApi(
       (segment, rest) <- GetNextSegment(pathSegments) ifNone Return(notFound)
       result <- segment match {
         case "search" => searchRequest(request, rest)
+        case "count" => countRequest(request, rest)
         case id => documentRequest(request, id, rest)
       }
     } yield result
@@ -58,6 +59,11 @@ class PublicApi(
     for {
       searchResult <- Index.Search(request, remainingPathSegments)
     } yield searchResult
+
+  private def countRequest(request: Request[AnyContent], remainingPathSegments: Seq[String])(implicit e: Elements) =
+    for {
+      countResult <- Index.Count(request, remainingPathSegments)
+    } yield countResult
 
   private lazy val runner = {
     val systemRunner = SystemToId andThen IdToFuture

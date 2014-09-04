@@ -9,6 +9,7 @@ import org.qirx.cms.testing.TestFailure
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.JsValue
 import testUtils.PrettyPrint
+import testUtils.codeString
 import org.qirx.cms.testing.IndexTester
 import play.api.libs.ws.WS
 import play.api.Play.current
@@ -42,6 +43,10 @@ import play.api.libs.ws.WSClient
 import testUtils.TestClient
 import testUtils.TestResponse
 import play.api.test.FakeRequest
+import play.api.libs.ws.InMemoryBody
+import play.api.mvc.Request
+import play.api.mvc.AnyContent
+import play.api.mvc.Result
 
 class _07_02_ElasticSearch extends Specification with Example {
 
@@ -135,6 +140,7 @@ class _07_02_ElasticSearch extends Specification with Example {
            |
            |Below an example of a search that would fail if we did not have 
            |this field. As a bonus it can be used for highlighting as well.""".stripMargin - example {
+
           val article = obj(
             "title" -> "Test article",
             "body" -> arr(
@@ -205,12 +211,33 @@ class _07_02_ElasticSearch extends Specification with Example {
           success
         }
 
-        """|The index provides search handling that will act as a proxy to the 
-           |Elastic Search `_search` endpoint.""".stripMargin - example {
-          import org.qirx.cms.elasticsearch
-          import elasticsearch.Document.Implicits.propertyWithIndexInfo
+        class ProxyCall(fakeResponse: JsObject, f: (Request[AnyContent], Seq[String]) => Index[Result]) {
+          val json = codeString {
+            fakeResponse
+          }
 
-          val response = new TestResponse(json =
+          import org.qirx.cms.elasticsearch
+
+          val testClient = new TestClient(new TestResponse(json = json.value))
+
+          val index = new elasticsearch.Index(documents, endpoint, indexName, testClient)
+
+          val expectedBody = obj("some" -> "body")
+          val request = FakeRequest("GET", "/ignored/?some=query").withJsonBody(expectedBody)
+
+          val path = "article"
+          val result = contentAsJson(index(f(request, Seq(path))))
+
+          val lastRequestHolder = testClient.lastRequestHolder
+          val calledUrl = lastRequestHolder.url
+          val receivedQueryString = lastRequestHolder.queryString
+          val receivedBody = lastRequestHolder.body
+        }
+
+        """|The index provides search handling that will act as a proxy to the 
+           |Elastic Search `_search` endpoint.""".stripMargin - {
+
+          val proxyCall = new ProxyCall(
             obj(
               "hits" -> obj(
                 "total" -> 1,
@@ -218,26 +245,23 @@ class _07_02_ElasticSearch extends Specification with Example {
                   obj("_id" -> "some id")
                 )
               )
-            )
-          )
-          val testClient = new TestClient(response)
+            ),
+            (request, remainingPathSegments) => Index.Search(request, remainingPathSegments))
+          import proxyCall._
 
-          val index = new elasticsearch.Index(documents, endpoint, indexName, testClient)
-
-          val path = "article"
-
-          val result = contentAsJson(index(Index.Search(FakeRequest("GET", "/ignored"), Seq(path))))
-
-          val calledUrl = testClient.lastRequestHolder.url
-
-          """|Calling `Search` with a request and `Seq($path)` as 
-             |remaining path segments results in the following call to 
-             |Elastic Search:""".stripMargin - example {
+          s"""|Calling `Search` with a request and `Seq("$path")` as 
+              |remaining path segments results in the following call to 
+              |Elastic Search:""".stripMargin - example {
             calledUrl is s"$endpoint/$indexName/article/_search"
           }
 
-          """|Note that the search method will extract the `"hits"` element
-             |from the result""".stripMargin - example {
+          s"""|Note that the search method will extract the `"hits"` element
+              |from the result.
+              |
+              |The result from the server:
+              |```
+              |$json
+              |```""".stripMargin - example {
             result is obj(
               "total" -> 1,
               "hits" -> arr(
@@ -246,11 +270,53 @@ class _07_02_ElasticSearch extends Specification with Example {
             )
           }
 
-          "headers, querystring, body, etc" - {}
+          "The index will forward the query string of the incoming request" - {
+            receivedQueryString is Map("some" -> Seq("query"))
+          }
+
+          "It will also forward the body" - {
+            receivedBody isLike {
+              case InMemoryBody(bytes) => Json.parse(bytes) is expectedBody
+            }
+          }
+        }
+
+        """|The index provides count handling that will act as a proxy to the 
+           |Elastic Search `_count` endpoint.""".stripMargin - {
+
+          val proxyCall = new ProxyCall(
+              obj("count" -> 1, "_shards" -> obj("some" -> "value")),
+              (request, remainingPathSegments) => Index.Count(request, remainingPathSegments))
+          import proxyCall._
+
+          s"""|Calling `Count` with a request and `Seq("$path")` as 
+              |remaining path segments results in the following call to 
+              |Elastic Search:""".stripMargin - example {
+            calledUrl is s"$endpoint/$indexName/article/_count"
+          }
+
+          s"""|The count method will return the `"count"` element from the result.
+              |
+              |The result from the server:
+              |```
+              |$json
+              |```""".stripMargin - example {
+            result is obj(
+              "count" -> 1
+            )
+          }
+
+          "The index will forward the query string of the incoming request" - {
+            receivedQueryString is Map("some" -> Seq("query"))
+          }
+
+          "It will also forward the body" - {
+            receivedBody isLike {
+              case InMemoryBody(bytes) => Json.parse(bytes) is expectedBody
+            }
+          }
         }
       }
-
-    "count" - {}
 
     "test different mappings (json)" - {}
 

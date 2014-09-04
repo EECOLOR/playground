@@ -15,4 +15,5 @@ object Index {
   case class DeleteAll(metaId: String) extends Index[Unit]
   case class AddId(metaId: String, id:String, newId:String) extends Index[Unit]
   case class Search(request:Request[AnyContent], remainingPathSegments:Seq[String]) extends Index[Result]
+  case class Count(request:Request[AnyContent], remainingPathSegments:Seq[String]) extends Index[Result]
 }

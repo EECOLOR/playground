@@ -216,7 +216,7 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
 
       s"""|##Search
           |
-          |The public API has one special endpoint called `search`. This endpoint 
+          |The public API has a special endpoint called `search`. This endpoint 
           |is special in the sense that it is not handled by the `$cmsName` itself, 
           |but by the index. This allows you to implement an index that fits your 
           |needs.""".stripMargin - example {
@@ -224,6 +224,19 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
         status is 200
         body is obj(
           "info" -> "Response from test index to search at `testPath`"
+        )
+      }
+
+      s"""|##Count
+          |
+          |The public API has a special endpoint called `count`. This endpoint 
+          |is special in the sense that it is not handled by the `$cmsName` itself, 
+          |but by the index. This allows you to implement an index that fits your 
+          |needs.""".stripMargin - example {
+        val (status, body) = GET from "/count/testPath"
+        status is 200
+        body is obj(
+          "info" -> "Response from test index to count at `testPath`"
         )
       }
     }

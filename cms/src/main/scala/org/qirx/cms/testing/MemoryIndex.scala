@@ -42,5 +42,8 @@ class MemoryIndex extends (Index ~> Future) {
 
     case Search(request, remainingPathSegments) =>
       Future successful Results.Accepted
+      
+    case Count(request, remainingPathSegments) =>
+      Future successful Results.Accepted
   }
 }

@@ -32,6 +32,7 @@ class _07__Index extends Specification {
           case Delete(metaId, id) => ???
           case DeleteAll(metaId) => ???
           case Search(request, remainingPath) => ???
+          case Count(request, remainingPath) => ???
         }
       }
     }

@@ -7,9 +7,9 @@ import scala.concurrent.Future
 import play.api.mvc.Results.Ok
 
 class TestIndex extends MemoryIndex {
-  
+
   import Index._
-  
+
   override def transform[x] = {
     case Search(request, remainingPathSegments) =>
       val searchResult =
@@ -18,6 +18,15 @@ class TestIndex extends MemoryIndex {
         )
 
       Future.successful(Ok(searchResult))
-    case other:Index[_] => super.transform[x](other)
+
+    case Count(request, remainingPathSegments) =>
+      val searchResult =
+        obj(
+          "info" -> s"Response from test index to count at `${remainingPathSegments.mkString}`"
+        )
+
+      Future.successful(Ok(searchResult))
+
+    case other: Index[_] => super.transform[x](other)
   }
 }

@@ -139,7 +139,7 @@ object _01_GettingStarted extends Specification with Example {
 
         s"""|${moreInformation[_03_Public_Api]}
             |
-            |This part of the API allows you to search and retrieve content, 
+            |This part of the API allows you to search, count and retrieve content, 
             |it does not require authentication.""".stripMargin - {
           example {
             val (status, body) = GET from "/api/public/article"
