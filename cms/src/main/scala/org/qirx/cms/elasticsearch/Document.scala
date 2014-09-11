@@ -13,13 +13,13 @@ import play.api.libs.json.JsObject
 
 object Document {
   def apply(id: String, idField: String)(
-    properties: (String, PropertyMetadata with PropertyIndexInfo)*): DocumentMetadata with DocumentMapping =
+    properties: (String, PropertyMetadata with PropertyIndexInformation)*): DocumentMetadata with DocumentMapping =
     DefaultDocument(id, idField, ListMap(properties: _*))
 
   private case class DefaultDocument(
     id: String,
     idField: String,
-    properties: ListMap[String, PropertyMetadata with PropertyIndexInfo],
+    properties: ListMap[String, PropertyMetadata with PropertyIndexInformation],
     evolutions: Evolutions = new Evolutions(Seq.empty))
     extends DocumentMetadata
     with CmsDocument.IdFieldGenerator
@@ -52,26 +52,6 @@ object Document {
     def transform(document: JsObject): JsObject =
       properties.foldLeft(document) {
         case (document, (name, property)) => property.transform(name, document)
-      }
-  }
-
-  object Implicits {
-    import scala.language.implicitConversions
-
-    implicit def propertyWithIndexInfo[T <: PropertyMetadata](
-      property: T)(implicit indexInfo: IndexInfo[T]): PropertyMetadata with PropertyIndexInfo =
-      new PropertyMetadata with PropertyIndexInfo {
-        val id = property.id
-        val confidential = property.confidential
-        val generator = property.generator
-
-        def validate(messages: Messages, value: Option[JsValue]) =
-          property.validate(messages, value)
-
-        lazy val toJson = property.toJson
-
-        def mappings(name: String) = indexInfo.mappings(name)
-        def transform(name: String, document:JsObject) = indexInfo.transform(name, document)
       }
   }
 }

@@ -7,7 +7,7 @@ import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
 import org.qirx.cms.metadata.PropertyMetadata
 
-trait Identifiable { self: Property =>
+trait Identifiable { self: PropertyMetadata =>
   private def set(nonEmpty: Boolean) = new ValueSetProperty[this.type](self, nonEmpty)
   //def + = set(nonEmpty = true)
   def * = set(nonEmpty = false)

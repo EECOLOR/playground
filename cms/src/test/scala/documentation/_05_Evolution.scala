@@ -24,7 +24,7 @@ import testUtils.TestIndex
 import testUtils.TestStore
 import testUtils.codeString
 
-object _05_Evolution extends Specification with Example {
+class _05_Evolution extends Specification with Example {
 
   """|#Evolution
      |

@@ -13,7 +13,7 @@ import testUtils.TestApplication
 import testUtils.codeString
 import play.api.mvc.RequestHeader
 
-object _02_01_Get_Failures extends Specification with ApiExampleSpecification {
+class _02_01_Get_Failures extends Specification with ApiExampleSpecification {
 
   val privateApiPrefix = "/api/private"
 

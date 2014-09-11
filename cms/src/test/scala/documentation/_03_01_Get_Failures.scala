@@ -7,7 +7,7 @@ import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.arr
 import testUtils.GetFromApplication
 
-object _03_01_Get_Failures extends Specification with ApiExampleSpecification {
+class _03_01_Get_Failures extends Specification with ApiExampleSpecification {
 
   val publicApiPrefix = "/api/public"
   

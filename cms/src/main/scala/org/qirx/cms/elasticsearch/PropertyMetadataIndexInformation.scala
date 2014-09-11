@@ -17,19 +17,19 @@ import play.api.libs.json.JsString
 import play.api.libs.json.JsArray
 import org.qirx.cms.metadata.dsl.ConfidentialProperty
 
-trait IndexInfo[-T] {
+trait PropertyMetadataIndexInformation[-T] {
   def mappings(propertyName: String): Seq[JsObject]
   def transform(propertyName: String, document: JsObject): JsObject
 }
 
-trait SimpleIndexInfo[-T] extends IndexInfo[T] {
+trait SimplePropertyMetadataIndexInformation[-T] extends PropertyMetadataIndexInformation[T] {
   def transform(propertyName: String, document: JsObject): JsObject = document
   def mappings(name: String) = Seq(obj(name -> mapping))
   def mapping: JsObject
 }
 
 trait LowerPriorityIndexInfo {
-  implicit def identifyable = new SimpleIndexInfo[Identifiable] {
+  implicit val identifyable = new SimplePropertyMetadataIndexInformation[Identifiable] {
     val mapping = obj(
       "type" -> "string",
       "index" -> "not_analyzed"
@@ -37,22 +37,22 @@ trait LowerPriorityIndexInfo {
   }
 }
 
-object IndexInfo extends LowerPriorityIndexInfo {
+object PropertyMetadataIndexInformation extends LowerPriorityIndexInfo {
 
-  implicit object date extends SimpleIndexInfo[Date] {
+  implicit object date extends SimplePropertyMetadataIndexInformation[Date] {
     val mapping = obj(
       "type" -> "date",
       "format" -> "date_time_no_millis"
     )
   }
 
-  implicit object label extends SimpleIndexInfo[Label] {
+  implicit object label extends SimplePropertyMetadataIndexInformation[Label] {
     val mapping = obj(
       "type" -> "string"
     )
   }
 
-  implicit object richContent extends IndexInfo[RichContent] {
+  implicit object richContent extends PropertyMetadataIndexInformation[RichContent] {
     def mappings(name: String) = Seq(
       obj(
         name -> obj(
@@ -77,22 +77,22 @@ object IndexInfo extends LowerPriorityIndexInfo {
       o ++ obj(name + "_text" -> RichContent.extractText(value))
   }
 
-  class WrappingMapping[T](wrapped: IndexInfo[_]) extends IndexInfo[T] {
+  class WrappingMapping[T](wrapped: PropertyMetadataIndexInformation[_]) extends PropertyMetadataIndexInformation[T] {
     def transform(name: String, document: JsObject) = wrapped.transform(name, document)
     def mappings(name: String) = wrapped.mappings(name)
   }
 
-  implicit object confidential extends IndexInfo[ConfidentialProperty[_]] {
+  implicit object confidential extends PropertyMetadataIndexInformation[ConfidentialProperty[_]] {
     def mappings(propertyName: String) = Seq.empty
     def transform(propertyName: String, document: JsObject) = document
   }
 
-  implicit def optional[T <: PropertyMetadata](implicit m: IndexInfo[T]) =
+  implicit def optional[T <: PropertyMetadata](implicit m: PropertyMetadataIndexInformation[T]) =
     new WrappingMapping[OptionalValueProperty[T]](m)
 
-  implicit def set[T <: PropertyMetadata with Identifiable](implicit m: IndexInfo[T]) =
+  implicit def set[T <: PropertyMetadata with Identifiable](implicit m: PropertyMetadataIndexInformation[T]) =
     new WrappingMapping[ValueSetProperty[T]](m)
 
-  implicit def generated[T <: PropertyMetadata with GeneratableValue](implicit m: IndexInfo[T]) =
+  implicit def generated[T <: PropertyMetadata with GeneratableValue](implicit m: PropertyMetadataIndexInformation[T]) =
     new WrappingMapping[GeneratedValueProperty[T]](m)
 }

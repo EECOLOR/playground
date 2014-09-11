@@ -6,7 +6,7 @@ import testUtils.ApiExampleSpecification
 import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.arr
 
-object _02_02_Post_Failures extends Specification with ApiExampleSpecification {
+class _02_02_Post_Failures extends Specification with ApiExampleSpecification {
 
   val privateApiPrefix = "/api/private"
 

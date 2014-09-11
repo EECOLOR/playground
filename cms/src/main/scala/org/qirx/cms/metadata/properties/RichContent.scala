@@ -1,15 +1,14 @@
 package org.qirx.cms.metadata.properties
 
 import scala.collection.Set
-
 import org.qirx.cms.i18n.Messages
 import org.qirx.cms.metadata.dsl.Property
-
 import play.api.libs.json.JsArray
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
+import play.api.libs.json.DefaultReads
 
 case class RichContentElement(name: String, attributes: Seq[String] = Seq.empty) {
   private lazy val attributesString =
@@ -105,14 +104,24 @@ object RichContent extends RichContent("rich_content",
 ) {
 
   val defaultAllowedElements = allowedElements
-  
-  def extractText(a:JsArray):String = a.value.foldLeft("") { 
-    case (acc, JsString(string)) => acc + string
-    case (acc, obj:JsObject) => 
-      val text = (obj \ "text").asOpt[String]
-      val children = (obj \ "children").asOpt[JsArray]
-      
-      acc + text.getOrElse("") + children.map(extractText).getOrElse("")
-    case (acc, _) => acc
+
+  def extractText(a: JsArray): String = {
+
+    def extract(values: Seq[JsValue]): Option[String] = {
+      val strings =
+        values.flatMap {
+          case JsString(string) => Some(string)
+          case obj: JsObject =>
+            val text = (obj \ "text").asOpt[JsString]
+            val children = (obj \ "children").asOpt[Seq[JsValue]].toSeq.flatten
+
+            extract(text.toSeq ++ children)
+          case _ => None
+        }
+      if (strings.isEmpty) None
+      else Some(strings mkString "" /* we might need to change this to ' ' in the future */)
+    }
+    
+    extract(a.value).getOrElse("")
   }
 }

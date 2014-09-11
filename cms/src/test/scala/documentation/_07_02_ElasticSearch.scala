@@ -1,52 +1,49 @@
 package documentation
 
-import org.qirx.littlespec.Specification
-import play.api.libs.json.JsObject
-import play.api.libs.json.Json
-import play.api.libs.json.Json.obj
-import play.api.libs.json.Json.arr
-import org.qirx.cms.testing.TestFailure
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.JsValue
-import testUtils.PrettyPrint
-import testUtils.codeString
-import org.qirx.cms.testing.IndexTester
-import play.api.libs.ws.WS
-import play.api.Play.current
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+
+import org.qirx.cms.construction.Index
 import org.qirx.cms.elasticsearch
+import org.qirx.cms.elasticsearch.Implicits.propertyWithMetadataIndexInformation
+import org.qirx.cms.elasticsearch.PropertyMetadataIndexInformation
+import org.qirx.cms.i18n.Messages
+import org.qirx.cms.metadata.dsl.Confidential
+import org.qirx.cms.metadata.dsl.Property
+import org.qirx.cms.metadata.properties.Date
+import org.qirx.cms.metadata.properties.Label
+import org.qirx.cms.metadata.properties.RichContent
+import org.qirx.cms.metadata.properties.Tag
+import org.qirx.cms.testing.IndexTester
+import org.qirx.cms.testing.TestFailure
+import org.qirx.littlespec.Specification
+
+import com.ning.http.client.AsyncHttpClientConfig
+
+import play.api.Play.current
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.json.JsObject
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json
+import play.api.libs.json.Json.arr
+import play.api.libs.json.Json.obj
+import play.api.libs.ws.InMemoryBody
+import play.api.libs.ws.WS
+import play.api.libs.ws.ning.NingWSClient
+import play.api.mvc.AnyContent
+import play.api.mvc.Request
+import play.api.mvc.Result
+import play.api.test.FakeApplication
+import play.api.test.FakeRequest
 import play.api.test.Helpers
 import play.api.test.Helpers.contentAsJson
 import play.api.test.Helpers.defaultAwaitTimeout
-import play.api.test.FakeApplication
-import org.qirx.cms.metadata.properties.Label
-import org.qirx.cms.metadata.properties.Tag
-import org.qirx.cms.metadata.properties.Date
-import org.qirx.cms.metadata.dsl.ConfidentialProperty
-import org.qirx.cms.metadata.dsl.Confidential
-import org.qirx.cms.metadata.PropertyMetadata
-import org.qirx.cms.i18n.Messages
-import org.qirx.cms.metadata.dsl.OptionalValueProperty
-import org.qirx.cms.metadata.dsl.ValueSetProperty
-import org.qirx.cms.metadata.dsl.Identifiable
-import org.qirx.cms.metadata.dsl.GeneratableValue
-import org.qirx.cms.metadata.dsl.GeneratedValueProperty
-import org.qirx.cms.metadata.properties.RichContent
-import org.qirx.cms.construction.Index
-import scala.concurrent.Await
-import scala.concurrent.duration._
 import testUtils.Example
-import testUtils.cmsName
-import com.ning.http.client.AsyncHttpClientConfig
-import play.api.libs.ws.ning.NingWSClient
-import play.api.libs.json.JsArray
-import play.api.libs.ws.WSClient
+import testUtils.PrettyPrint
 import testUtils.TestClient
 import testUtils.TestResponse
-import play.api.test.FakeRequest
-import play.api.libs.ws.InMemoryBody
-import play.api.mvc.Request
-import play.api.mvc.AnyContent
-import play.api.mvc.Result
+import testUtils.cmsName
+import testUtils.codeString
 
 class _07_02_ElasticSearch extends Specification with Example {
 
@@ -67,7 +64,7 @@ class _07_02_ElasticSearch extends Specification with Example {
        |the correct implicit conversion.""".stripMargin -
       new ExampleContainer {
         import org.qirx.cms.elasticsearch
-        import elasticsearch.Document.Implicits.propertyWithIndexInfo
+        import elasticsearch.Implicits.propertyWithMetadataIndexInformation
 
         val documents = Seq(
           elasticsearch.Document(id = "article", idField = "title")(
@@ -211,6 +208,30 @@ class _07_02_ElasticSearch extends Specification with Example {
           success
         }
 
+        "It is possible to provide index information for custom property types" - {
+          import org.qirx.cms.elasticsearch
+          import org.qirx.cms.elasticsearch.Implicits._
+
+          object CustomProperty extends Property("custom") {
+            def validate(messages: Messages, value: JsValue): Option[JsObject] = None
+            def extraJson: Option[JsObject] = None
+          }
+
+          implicit val indexInformation =
+            new PropertyMetadataIndexInformation[CustomProperty.type] {
+              def mappings(propertyName: String): Seq[JsObject] = Seq.empty
+              def transform(propertyName: String, document: JsObject): JsObject = document
+            }
+
+          val documents = Seq(
+            elasticsearch.Document(id = "article", idField = "title")(
+              "title" -> CustomProperty
+            )
+          )
+          
+          success
+        }
+
         class ProxyCall(fakeResponse: JsObject, f: (Request[AnyContent], Seq[String]) => Index[Result]) {
           val json = codeString {
             fakeResponse
@@ -285,8 +306,8 @@ class _07_02_ElasticSearch extends Specification with Example {
            |Elastic Search `_count` endpoint.""".stripMargin - {
 
           val proxyCall = new ProxyCall(
-              obj("count" -> 1, "_shards" -> obj("some" -> "value")),
-              (request, remainingPathSegments) => Index.Count(request, remainingPathSegments))
+            obj("count" -> 1, "_shards" -> obj("some" -> "value")),
+            (request, remainingPathSegments) => Index.Count(request, remainingPathSegments))
           import proxyCall._
 
           s"""|Calling `Count` with a request and `Seq("$path")` as 
@@ -317,8 +338,6 @@ class _07_02_ElasticSearch extends Specification with Example {
           }
         }
       }
-
-    "test different mappings (json)" - {}
 
     s"""|The following tests ensure it acts as expected from the persfective of 
         |the $cmsName.
@@ -354,7 +373,6 @@ class _07_02_ElasticSearch extends Specification with Example {
 
       success
     }
-
   }
 
   def runningFakeApplication[T](block: => T): T = Helpers.running(FakeApplication())(block)

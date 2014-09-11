@@ -8,7 +8,7 @@ import play.api.libs.json.Json.arr
 import testUtils.PutToApplication
 import testUtils.GetFromApplication
 
-object _02_03_Put_Failures extends Specification with ApiExampleSpecification {
+class _02_03_Put_Failures extends Specification with ApiExampleSpecification {
 
   val privateApiPrefix = "/api/private"
 

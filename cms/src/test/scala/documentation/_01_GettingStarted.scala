@@ -29,7 +29,7 @@ import testUtils.codeString
 import testUtils.testCmsMetadata
 import testUtils.testCmsMetadataJson
 
-object _01_GettingStarted extends Specification with Example {
+class _01_GettingStarted extends Specification with Example {
 
   s"""|#Getting started
       |

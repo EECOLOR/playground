@@ -9,7 +9,7 @@ import testUtils.PutToApplication
 import testUtils.GetFromApplication
 import testUtils.PatchToApplication
 
-object _02_04_Patch_Failures extends Specification with ApiExampleSpecification {
+class _02_04_Patch_Failures extends Specification with ApiExampleSpecification {
 
   val privateApiPrefix = "/api/private"
 

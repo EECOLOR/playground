@@ -12,7 +12,7 @@ import play.api.mvc.RequestHeader
 import testUtils.TestApplication
 import scala.concurrent.Future
 
-object _04_01_Get_Failures extends Specification with ApiExampleSpecification {
+class _04_01_Get_Failures extends Specification with ApiExampleSpecification {
 
   val metadataApiPrefix = "/api/metadata"
 
