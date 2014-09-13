@@ -13,7 +13,6 @@ import org.qirx.cms.construction.Index.Get
 import play.api.mvc.Result
 import org.qirx.cms.construction.Index
 import scala.language.higherKinds
-import org.qirx.cms.machinery.Free
 import org.qirx.cms.construction.Return
 import org.qirx.cms.construction.ValueOf
 import org.qirx.cms.construction.api.GetFieldSetFromQueryString

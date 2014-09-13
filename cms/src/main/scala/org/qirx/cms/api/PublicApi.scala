@@ -29,10 +29,10 @@ class PublicApi(
   def handleRequest(pathSegments: Seq[String], request: Request[AnyContent]) = {
 
     val program = programFor(request, pathSegments)
-    program.mergeBranch.foldMap(runner)
+    program.mergeBranch executeWith runner
   }
 
-  private type Elements = ProgramType[(Base + Index + Metadata + Branch[Result]#T)#T]
+  private type Elements = ProgramType[(System + Index + Metadata + Branch[Result]#T)#T]
 
   /**
    * The implicit parameter determines the type of the resulting program

@@ -2,7 +2,7 @@ package org.qirx.cms.machinery
 
 import scala.language.implicitConversions
 import scala.language.higherKinds
-import org.qirx.cms.construction.System
+import org.qirx.cms.construction.{System => SystemInstruction}
 
 trait BuildTools extends BranchEnhancements with Coproduct.Transformations {
 
@@ -10,8 +10,8 @@ trait BuildTools extends BranchEnhancements with Coproduct.Transformations {
     type T[_]
   }
 
-  type Base = TypeSet {
-    type T[x] = System[x]
+  type System = TypeSet {
+    type T[x] = SystemInstruction[x]
   }
 
   type +[Types <: TypeSet, Type[_]] = TypeSet {
@@ -20,14 +20,13 @@ trait BuildTools extends BranchEnhancements with Coproduct.Transformations {
 
   implicit def toProgram[F[_], A, O[_]](fa: F[A])(
     implicit p: ProgramType[O],
-    lift: F ~> O): Program[O, A] = Program(fa)
+    lift: F ~> O): Program[O, A] = Program(lift(fa))
 
   implicit class ProgramEnhancements[F[_], A, O[_]](s: F[A]) {
     def asProgram(
       implicit p: ProgramType[O],
       lift: F ~> O): Program[O, A] = toProgram(s)
   }
-
 }
 
 object BuildTools extends BuildTools

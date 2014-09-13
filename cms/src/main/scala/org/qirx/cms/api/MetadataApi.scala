@@ -37,10 +37,10 @@ class MetadataApi(
 
     val program = programFor(request, pathAtDocumentType)
 
-    program.mergeBranch.foldMap(runner)
+    program.mergeBranch executeWith runner
   }
 
-  private type Elements = ProgramType[(Base + Authentication + Metadata + Branch[Result]#T)#T]
+  private type Elements = ProgramType[(System + Authentication + Metadata + Branch[Result]#T)#T]
 
   /**
    * The implicit parameter determines the type of the resulting program

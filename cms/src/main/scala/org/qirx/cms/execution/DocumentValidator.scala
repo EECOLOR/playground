@@ -30,9 +30,9 @@ class DocumentValidator(
   type ValidationResult = Seq[JsObject]
   type Result = (Document, DocumentMetadata, ValidationResult)
   
-  def validate():Future[Seq[Result]] = validationProgram.foldMap(runner)
+  def validate():Future[Seq[Result]] = validationProgram executeWith runner
   
-  private type Elements = ProgramType[(Base + Store + Metadata + Seq)#T]
+  private type Elements = ProgramType[(System + Store + Metadata + Seq)#T]
 
   private def validationProgram(implicit e: Elements) =
     for {

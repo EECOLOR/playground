@@ -22,9 +22,9 @@ class DocumentIndexer(
   import BuildTools._
   import ExecutionTools._
   
-  def index():Future[Seq[Unit]] = indexProgram.foldMap(runner)
+  def index():Future[Seq[Unit]] = indexProgram executeWith runner
   
-  private type Elements = ProgramType[(Base + Metadata + Store + Index + Seq)#T]
+  private type Elements = ProgramType[(System + Metadata + Store + Index + Seq)#T]
 
   private def indexProgram(implicit e: Elements) =
     for {

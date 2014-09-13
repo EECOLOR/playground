@@ -7,14 +7,7 @@ package object machinery {
 
   type Id[x] = x
 
-  type ~>[-F[_], +G[_]] = NaturalTransformation[F, G]
-
-  type Program[F[_], A] = Free[F, A]
-
-  object Program {
-    def apply[F[_], A, O[_]](fa: F[A])(
-      implicit lift: F ~> O): Program[O, A] = Free(lift(fa))
-  }
+  type ~>[-F[_], +G[_]] = ContainerTransformation[F, G]
 
   trait ProgramType[T[_]] {
     type Result[x] = T[x]

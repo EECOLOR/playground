@@ -1,6 +1,5 @@
 package org.qirx.cms.machinery
 
-import play.api.mvc.Result
 import org.qirx.cms.construction.Branch
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
@@ -8,21 +7,26 @@ import scala.concurrent.ExecutionContext
 trait ExecutionTools {
 
   type FutureSeq[T] = Future[Seq[T]]
-  implicit def futureSeqMonad(implicit ec: ExecutionContext) =
-    new Free.Monad[FutureSeq] {
-      def apply[A](a: A) = Future.successful(Seq(a))
-      def flatMap[A, B](fa: FutureSeq[A], f: A => FutureSeq[B]) = {
+  implicit def futureSeqChainer(implicit ec: ExecutionContext) =
+    new Chainer[FutureSeq] {
+      def chain[A, B](fa: FutureSeq[A], to: A => FutureSeq[B]) = {
         fa.flatMap { list =>
-          Future.sequence(list.map(f)).map(_.flatten)
+          Future.sequence(list.map(to)).map(_.flatten)
         }
       }
     }
+  implicit val futureSeqFactory =
+    new Factory[FutureSeq] {
+      def create[A](a: A) = Future.successful(Seq(a))
+    }
 
-  implicit def futureMonad(implicit ec: ExecutionContext) =
-    new Free.Monad[Future] {
-      def apply[A](a: A) = Future.successful(a)
-      def flatMap[A, B](fa: Future[A], f: A => Future[B]) =
-        fa flatMap f
+  implicit val futureFactory =
+    new Factory[Future] {
+      def create[A](a: A) = Future.successful(a)
+    }
+  implicit def futureChainer(implicit ec: ExecutionContext) =
+    new Chainer[Future] {
+      def chain[A, B](f: Future[A], to: A => Future[B]) = f flatMap to
     }
 
   object IdToFuture extends (Id ~> Future) {

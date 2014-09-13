@@ -36,10 +36,10 @@ class PrivateApi(
 
     val program = programFor(request, pathAtDocumentType)
 
-    program.mergeBranch.foldMap(runner)
+    program.mergeBranch executeWith runner
   }
 
-  private type Elements = ProgramType[(Base + Store + Index + Metadata + Authentication + Branch[Result]#T)#T]
+  private type Elements = ProgramType[(System + Store + Index + Metadata + Authentication + Branch[Result]#T)#T]
 
   /**
    * The implicit parameter determines the type of the resulting program

@@ -8,13 +8,13 @@ trait BranchEnhancements {
   private type Lift[F[_], B] = Branch[B]#T ~> F
 
   def branch[F[_], A, B, O[_]](p1: Program[F, A], p2: => Program[F, B])(
-    stayLeft: A => Boolean)(implicit l: Lift[F, B]): Program[F, A] = {
+    stayLeft: A => Boolean)(implicit lift: Lift[F, B]): Program[F, A] = {
     val value: Program[F, Either[A, B]] =
       p1.flatMap {
-        case a if stayLeft(a) => Apply(Left(a))
+        case a if stayLeft(a) => Result(Left(a))
         case _ => p2 map Right.apply
       }
-    value.flatMap(value => Program(Branch[B].Instance(value)))
+    value.flatMap(value => Program(lift(Branch[B].Instance(value))))
   }
 
   implicit class BooleanContinuation[P, F[_]](program1: P)(
@@ -66,18 +66,18 @@ trait BranchEnhancements {
   implicit class CoproductWithBranchEnhancements[F[_], A, In[_], Out[_]](
     program: Program[In, A])(implicit withBranchAtHead: In ~> Co[Branch[A]#T, Out]#T) {
 
-    def mergeBranch: Free[Out, A] =
+    def mergeBranch: Program[Out, A] =
       program match {
-        case Apply(a) => Apply(a)
-        case x @ FlatMap(fa, f) =>
+        case Result(a) => Result(a)
+        case x @ SuspendedAndThen(fa, f) =>
           withBranchAtHead(fa).value match {
             case Left(branch) =>
               branch.value match {
                 case Left(any) => f(any).mergeBranch
-                case Right(t) => Apply(t)
+                case Right(t) => Result(t)
               }
             case Right(withoutBranch) =>
-              Free(withoutBranch).flatMap(f andThen (_.mergeBranch))
+              Program(withoutBranch).flatMap(f andThen (_.mergeBranch))
           }
       }
   }

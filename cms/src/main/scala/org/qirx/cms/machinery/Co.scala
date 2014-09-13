@@ -2,7 +2,12 @@ package org.qirx.cms.machinery
 
 import scala.language.higherKinds
 
-/*
+/**
+ * This is like an `Either`, but specialized for container types. 
+ * `Either[Option[String], List[String]` is a valid representation for `Coproduct`,
+ * it's required that both containers are about `String`. The following 
+ * would be an invalid representation: `Either[Option[Int], List[String]]`.
+ * 
  * When we define this as Coproduct[F[_], G[_], x] implicit 
  * resolution falters in combination with partial application
  * like this: ({type T[x] = Coproduct[F, G, x]})#T 

@@ -5,7 +5,6 @@ import scala.language.higherKinds
 import org.qirx.cms.construction._
 import org.qirx.cms.construction.api._
 import org.qirx.cms.machinery.BuildTools
-import org.qirx.cms.machinery.Free
 import org.qirx.cms.machinery.Program
 import org.qirx.cms.machinery.ProgramType
 import org.qirx.cms.machinery.~>
@@ -157,10 +156,10 @@ class DocumentRequestHandler[O[_]](
   private def getUniqueId(id: String) = {
     val withBranch = uniqueIdProgram(id)
     val withoutBranch = withBranch.mergeBranch
-    withoutBranch.mapSuspension[O]
+    withoutBranch.changeInstructionTypeTo[O]
   }
 
-  private type Elements = ProgramType[(Base + Store + Branch[String]#T)#T]
+  private type Elements = ProgramType[(System + Store + Branch[String]#T)#T]
   private def uniqueIdProgram(id: String)(implicit e: Elements): Program[e.Result, String] = {
     for {
       _ <- Store.Exists(metaId, id) ifFalse ValueOf(id)

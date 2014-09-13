@@ -2,7 +2,10 @@ package org.qirx.cms.machinery
 
 import scala.language.higherKinds
 
-trait NaturalTransformation[-F[_], +G[_]] { fToG =>
+/**
+ * In the functional world called Natural Transformation
+ */
+trait ContainerTransformation[-F[_], +G[_]] { fToG =>
   def transform[x]: F[x] => G[x]
 
   def apply[x](fx: F[x]): G[x] = transform[x](fx)
@@ -13,9 +16,9 @@ trait NaturalTransformation[-F[_], +G[_]] { fToG =>
     }
 }
 
-object NaturalTransformation {
+object ContainerTransformation {
 
-  implicit class NaturalTransformationEnhancements[F[_], G[_], X](fToG: X)(
+  implicit class ContainerTransformationEnhancements[F[_], G[_], X](fToG: X)(
     implicit xAsTransformation: X => F ~> G) {
 
     /* 
