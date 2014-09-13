@@ -7,7 +7,7 @@ import play.api.libs.json.Json.obj
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
-class DocumentStore(
+class IndexStore(
   endpoint: String,
   indexName: String,
   metaId: String,

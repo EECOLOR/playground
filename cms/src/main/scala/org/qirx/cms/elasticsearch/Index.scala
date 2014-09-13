@@ -24,9 +24,11 @@ import play.api.libs.ws.EmptyBody
 import play.api.libs.ws.InMemoryBody
 import play.api.mvc.Request
 import play.api.mvc.AnyContent
+import org.qirx.cms.elasticsearch.index.DocumentMappings
+import org.qirx.cms.elasticsearch.index.DocumentTransformer
 
 class Index(
-  documentMetadata: Seq[DocumentMetadata with DocumentMapping],
+  documentMetadata: Seq[DocumentMetadata with DocumentMappings with DocumentTransformer],
   endpoint: String,
   indexName: String,
   client: WSClient)(implicit ec: ExecutionContext) extends (CmsIndex ~> Future) {
@@ -37,11 +39,11 @@ class Index(
   lazy val documentMetadataMap =
     documentMetadata.map(document => document.id -> document).toMap
 
-  private val indexes = mutable.Map.empty[String, DocumentStore]
+  private val indexes = mutable.Map.empty[String, IndexStore]
 
   private def indexFor(metaId: String) =
     indexes.getOrElseUpdate(metaId,
-      new DocumentStore(endpoint, indexName, metaId, client))
+      new IndexStore(endpoint, indexName, metaId, client))
 
   import CmsIndex._
 

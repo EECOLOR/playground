@@ -2,11 +2,8 @@ package documentation
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-
 import org.qirx.cms.construction.Index
 import org.qirx.cms.elasticsearch
-import org.qirx.cms.elasticsearch.Implicits.propertyWithMetadataIndexInformation
-import org.qirx.cms.elasticsearch.PropertyMetadataIndexInformation
 import org.qirx.cms.i18n.Messages
 import org.qirx.cms.metadata.dsl.Confidential
 import org.qirx.cms.metadata.dsl.Property
@@ -17,9 +14,7 @@ import org.qirx.cms.metadata.properties.Tag
 import org.qirx.cms.testing.IndexTester
 import org.qirx.cms.testing.TestFailure
 import org.qirx.littlespec.Specification
-
 import com.ning.http.client.AsyncHttpClientConfig
-
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.JsObject
@@ -44,6 +39,9 @@ import testUtils.TestClient
 import testUtils.TestResponse
 import testUtils.cmsName
 import testUtils.codeString
+import org.qirx.cms.elasticsearch.index.Mappings
+import org.qirx.cms.elasticsearch.index.Transformer
+import org.qirx.cms.metadata.dsl.OptionalValueProperty
 
 class _07_02_ElasticSearch extends Specification with Example {
 
@@ -64,10 +62,10 @@ class _07_02_ElasticSearch extends Specification with Example {
        |the correct implicit conversion.""".stripMargin -
       new ExampleContainer {
         import org.qirx.cms.elasticsearch
-        import elasticsearch.Implicits.propertyWithMetadataIndexInformation
+        import elasticsearch.index.Implicits._
 
         val documents = Seq(
-          elasticsearch.Document(id = "article", idField = "title")(
+          elasticsearch.index.Document(id = "article", idField = "title")(
             "title" -> Label,
             "secret" -> Confidential(Label.?),
             "body" -> RichContent.?,
@@ -210,7 +208,7 @@ class _07_02_ElasticSearch extends Specification with Example {
 
         "It is possible to provide index information for custom property types" - {
           import org.qirx.cms.elasticsearch
-          import org.qirx.cms.elasticsearch.Implicits._
+          import org.qirx.cms.elasticsearch.index.Implicits._
 
           object CustomProperty extends Property("custom") {
             def validate(messages: Messages, value: JsValue): Option[JsObject] = None
@@ -218,17 +216,17 @@ class _07_02_ElasticSearch extends Specification with Example {
           }
 
           implicit val indexInformation =
-            new PropertyMetadataIndexInformation[CustomProperty.type] {
+            new Mappings[CustomProperty.type] with Transformer[CustomProperty.type] {
               def mappings(propertyName: String): Seq[JsObject] = Seq.empty
               def transform(propertyName: String, document: JsObject): JsObject = document
             }
 
           val documents = Seq(
-            elasticsearch.Document(id = "article", idField = "title")(
+            elasticsearch.index.Document(id = "article", idField = "title")(
               "title" -> CustomProperty
             )
           )
-          
+
           success
         }
 
