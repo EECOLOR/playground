@@ -5,11 +5,11 @@ import org.qirx.cms.i18n.Messages
 import org.qirx.cms.machinery.Id
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.metadata.DocumentMetadata
-
 import play.api.libs.json.JsObject
 import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
+import org.qirx.cms.metadata.ValueGenerator
 
 class MetadataToId(documents: Seq[DocumentMetadata]) extends (Metadata ~> Id) {
 
@@ -42,9 +42,9 @@ class MetadataToId(documents: Seq[DocumentMetadata]) extends (Metadata ~> Id) {
       Messages.withPrefix(meta.id)
 
     case AddGeneratedProperties(meta, document) =>
-      def addToDocument(document: JsObject, value: (String, () => JsValue)) = {
-        val (name, generateValue) = value
-        document ++ obj(name -> generateValue())
+      def addToDocument(document: JsObject, value: (String, ValueGenerator)) = {
+        val (name, valueGenerator) = value
+        document ++ obj(name -> valueGenerator.generate(name, document))
       }
 
       generatorsFrom(meta).foldLeft(document)(addToDocument)

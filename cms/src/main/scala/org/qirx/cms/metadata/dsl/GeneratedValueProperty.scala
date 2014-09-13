@@ -2,13 +2,13 @@ package org.qirx.cms.metadata.dsl
 
 import org.qirx.cms.i18n.Messages
 import org.qirx.cms.metadata.PropertyMetadata
-
 import play.api.libs.json.JsValue
 import play.api.libs.json.JsObject
 import play.api.libs.json.Json.obj
+import org.qirx.cms.metadata.ValueGenerator
 
-trait GeneratableValue { self: PropertyMetadata =>
-  def generated = new GeneratedValueProperty[this.type](self)
+trait GeneratableValue { _: PropertyMetadata =>
+  def generated = new GeneratedValueProperty[this.type](this)
   def generate: JsValue
 }
 
@@ -17,16 +17,21 @@ class GeneratedValueProperty[T <: PropertyMetadata with GeneratableValue](proper
 
   //def once:GeneratedValueProperty = ???
 
-  val generator = Some { () =>
-    val generatedValue = property.generate
+  val generator = {
+    val generator = new ValueGenerator {
+      def generate(propertyName: String, document: JsObject): JsValue = {
+        val generatedValue = property.generate
 
-    // implemented the checking as a side effect to keep the API simple
-    val validationResults = property.validate(Messages, Some(generatedValue))
-    validationResults.foreach { _ =>
-      sys.error(s"Generated value is invalid, value: $generatedValue\nvalidationResults: $validationResults")
+        // implemented the checking as a side effect to keep the API simple
+        val validationResults = property.validate(Messages, Some(generatedValue))
+        validationResults.foreach { _ =>
+          sys.error(s"Generated value is invalid, value: $generatedValue\nvalidationResults: $validationResults")
+        }
+
+        generatedValue
+      }
     }
-
-    generatedValue
+    Some(generator)
   }
 
   protected lazy val generatedErrorObj = idObj ++ obj("error" -> "generated")

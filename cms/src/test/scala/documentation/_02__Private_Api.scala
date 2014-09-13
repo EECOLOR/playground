@@ -211,7 +211,9 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
           "tags" -> arr("tag1", "tag3")
         )
 
-        val (status, body) = PATCH("/article/article_2") using withTags
+        val (status, body) = withFixedDateTime {
+          PATCH("/article/article_2") using withTags
+        }
         status is 204
         body is null
       }
@@ -311,6 +313,10 @@ class _02_Private_Api extends Specification with ApiExampleSpecification {
         )
       }
 
+      """|If you work with properties that have generated values, note 
+         |that their generator is called on every POST, PUT and PATCH
+         |request.""".stripMargin - {}
+      
       "It's also possible to remove all documents" - example {
         val (status, body) = DELETE from "/article"
 

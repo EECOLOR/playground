@@ -9,7 +9,7 @@ import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
 import play.api.libs.json.Reads
 
-trait PropertyValidation { self: PropertyMetadata =>
+trait PropertyValidation { _: PropertyMetadata =>
 
   lazy val idObj = obj("id" -> id)
 

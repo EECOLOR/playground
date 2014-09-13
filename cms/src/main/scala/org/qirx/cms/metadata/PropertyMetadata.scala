@@ -10,7 +10,7 @@ import org.qirx.cms.testing.TypeclassMagnet
 trait PropertyMetadata {
   def id: String
   def confidential:Boolean
-  def generator:Option[() => JsValue]
+  def generator:Option[ValueGenerator]
   
   def validate(messages:Messages, value:Option[JsValue]):Option[JsObject]
   

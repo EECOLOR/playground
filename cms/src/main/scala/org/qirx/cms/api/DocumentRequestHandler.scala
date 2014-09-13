@@ -105,10 +105,11 @@ class DocumentRequestHandler[O[_]](
 
   private def patchDocument(id: String, document: JsObject) =
     for {
-      generatedId <- ValueOf(generateIdFor(document))
-      documentWithId <- AddId(document, generatedId)
-      _ <- ValueOf(id == generatedId) ifFalse saveWithNewId(id, generatedId, document)
-      _ <- save(id, document)
+      fullDocument <- AddGeneratedProperties(meta, document)
+      generatedId <- ValueOf(generateIdFor(fullDocument))
+      documentWithId <- AddId(fullDocument, generatedId)
+      _ <- ValueOf(id == generatedId) ifFalse saveWithNewId(id, generatedId, fullDocument)
+      _ <- save(id, fullDocument)
     } yield noContent
 
   def delete =
