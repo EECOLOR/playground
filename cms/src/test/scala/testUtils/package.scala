@@ -13,6 +13,8 @@ import org.qirx.cms.metadata.dsl.Document
 import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.arr
 import org.qirx.littlespec.fragments.Code
+import scala.reflect.ClassTag
+import org.qirx.littlespec.reporter.MarkdownReporter
 
 package object testUtils {
   val cmsName = classOf[Cms].getSimpleName
@@ -124,4 +126,19 @@ package object testUtils {
       )
     )
   }
+  
+  def link[T: ClassTag] = {
+    val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
+
+    val name = MarkdownReporter.name(fullyQualifiedName)
+    val fileName = MarkdownReporter.fileName(fullyQualifiedName)
+
+    val cleanFileName = fileName.replaceAll("\\$", "")
+    val cleanName = name.replaceAll("_", " ").replaceAll("\\$", "").trim
+
+    s"[$cleanName]($cleanFileName)"
+  }
+
+  def moreInformation[T: ClassTag] =
+    s"For detailed information see ${link[T]}"
 }

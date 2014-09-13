@@ -28,10 +28,13 @@ class _07_02_02_Property_Transformers extends Specification {
 
   val name = "[name]"
 
-  """|These are the specifications of the different property transformation
-     |instances that are provided implicitly""".stripMargin - {
+    trait Custom extends PropertyMetadata with Identifiable with GeneratableValue
 
-    "Identity transformation for any type" - {
+  """|For the built-in types a transformers are provided.
+     |
+     |These are the default transformers""".stripMargin - {
+
+    "Any type that has no explicit transformer will not be transformed" - {
       val transformer = implicitly[Transformer[Any]]
       val testDocument = obj("test" -> "two")
       val resultDocument = transformer.transform(name, testDocument)
@@ -39,6 +42,10 @@ class _07_02_02_Property_Transformers extends Specification {
       testDocument eq resultDocument is true
     }
 
+    implicit val customTransformer = new Transformer[Custom] {
+      def transform(propertyName: String, document: JsObject) = obj("custom" -> propertyName)
+    }
+    
     wrappedTransformation[OptionalValueProperty[Custom]]
     wrappedTransformation[GeneratedValueProperty[Custom]]
     wrappedTransformation[ValueSetProperty[Custom]]
@@ -56,37 +63,34 @@ class _07_02_02_Property_Transformers extends Specification {
     )
   }
 
+  def wrappedTransformation[T](
+    implicit classTag: ClassTag[T],
+    provided: Transformer[T]) =
+    s"`${classTag.runtimeClass.getSimpleName}[Custom]` is transformed using the `Custom` transformer" - {
+
+      val transformationResult = obj("custom" -> name)
+      val document = obj(name -> "test")
+      provided.transform(name, document) is transformationResult
+    }
+
   def transformation[T](
     document: JsObject,
     transformationResult: JsObject)(
       implicit classTag: ClassTag[T],
-      provided: Transformer[T]) =
-    classTag.runtimeClass.getSimpleName - {
+      provided: Transformer[T]) = {
 
-      "Perform the correct transformation" - {
-        val transformed = provided.transform(name, document)
-        transformed is transformationResult
-      }
-    }
-
-  trait Custom extends PropertyMetadata with Identifiable with GeneratableValue
-  object Custom {
-    implicit val customTransformer = new Transformer[Custom] {
-      def transform(propertyName: String, document: JsObject) = obj("custom" -> propertyName)
+    val documentAsString = Json.prettyPrint(document)
+    val transformationResultAsString = Json.prettyPrint(transformationResult)
+    
+    s"""|`${classTag.runtimeClass.getSimpleName}` transforms
+        |```json
+        |$documentAsString
+        |```
+        |to
+        |```json
+        |$transformationResultAsString
+        |```""".stripMargin - {
+        provided.transform(name, document) is transformationResult
     }
   }
-
-  def wrappedTransformation[T](
-    implicit classTag: ClassTag[T],
-    provided: Transformer[T]) =
-    classTag.runtimeClass.getSimpleName - {
-
-      val transformationResult = obj("custom" -> name)
-
-      "Perform the wrapped transformation" - {
-        val document = obj(name -> "test")
-        val transformed = provided.transform(name, document)
-        transformed is transformationResult
-      }
-    }
 }

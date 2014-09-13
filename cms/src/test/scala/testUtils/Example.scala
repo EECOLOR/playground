@@ -41,19 +41,4 @@ trait Example { self: Specification =>
 
   def exampleWithReplacements[T](code: => T)(implicit asBody: T => Fragment.Body, location: Location): Fragment =
     createFragment(codeWithReplacements, code)
-
-  def link[T: ClassTag] = {
-    val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
-
-    val name = MarkdownReporter.name(fullyQualifiedName)
-    val fileName = MarkdownReporter.fileName(fullyQualifiedName)
-
-    val cleanFileName = fileName.replaceAll("\\$", "")
-    val cleanName = name.replaceAll("_", " ").replaceAll("\\$", "").trim
-
-    s"[$cleanName]($cleanFileName)"
-  }
-
-  def moreInformation[T: ClassTag] =
-    s"For detailed information see ${link[T]}"
 }

@@ -28,8 +28,15 @@ class _07_02_01_Property_Mappings extends Specification {
 
   val name = "[name]"
 
-  """|These are the specifications of the different property mapping
-     |instances that are provided implicitly""".stripMargin - {
+  trait Custom extends PropertyMetadata with Identifiable with GeneratableValue
+
+  s"""|For the built-in types a mappings are provided.
+      |
+      |These are the default mappings:""".stripMargin - {
+
+    implicit val customMappings = new Mappings[Custom] {
+      def mappings(propertyName: String) = Seq(obj(propertyName -> "custom"))
+    }
 
     wrappedMappings[OptionalValueProperty[Custom]]
     wrappedMappings[GeneratedValueProperty[Custom]]
@@ -63,50 +70,39 @@ class _07_02_01_Property_Mappings extends Specification {
     providedMappings[Tag, Identifiable]
   }
 
-  def providedMappings[T1, T2](
-    implicit classTag1: ClassTag[T1], classTag2: ClassTag[T2],
-    information1: Mappings[T1],
-    information2: Mappings[T2]) = {
-
-    val name1 = classTag1.runtimeClass.getSimpleName
-    val name2 = classTag2.runtimeClass.getSimpleName
-
-    s"$name1 is provided by $name2" - {
-      information1 is information2
-    }
-  }
-
-  trait Custom extends PropertyMetadata with Identifiable with GeneratableValue
-  object Custom {
-    implicit val customMappings = new Mappings[Custom] {
-      def mappings(propertyName: String) = Seq(obj(propertyName -> "custom"))
-    }
-  }
-
   def wrappedMappings[T](
     implicit classTag: ClassTag[T],
     provided: Mappings[T]) =
-    classTag.runtimeClass.getSimpleName - {
+    s"`${classTag.runtimeClass.getSimpleName}[Custom]` is delegating to to the `Custom` mapping" - {
 
       val mapping = obj(name -> "custom")
-
-      val mappings = provided.mappings(name)
-
-      "Provide the wrapped mappings" - {
-        mappings is Seq(mapping)
-      }
+      provided.mappings(name) is Seq(mapping)
     }
 
   def mappings[T](mappings: JsObject*)(
     implicit classTag: ClassTag[T],
-    provided: Mappings[T]) =
-    classTag.runtimeClass.getSimpleName - {
+    provided: Mappings[T]) = {
 
-      val providedMappings = provided.mappings(name)
-      val mappingsAsString = Json prettyPrint mappings.fold(obj())(_ ++ _)
+    val mappingsAsString = Json prettyPrint mappings.fold(obj())(_ ++ _)
 
-      s"Provide the correct mappings\n$mappingsAsString" - {
-        providedMappings is mappings
-      }
+    s"""|`${classTag.runtimeClass.getSimpleName}` is mapped as
+        |```json
+        |$mappingsAsString
+        |```""".stripMargin - {
+      provided.mappings(name) is mappings
     }
+  }
+
+  def providedMappings[T1, T2](
+    implicit classTag1: ClassTag[T1], classTag2: ClassTag[T2],
+    provided1: Mappings[T1],
+    provided2: Mappings[T2]) = {
+
+    val name1 = classTag1.runtimeClass.getSimpleName
+    val name2 = classTag2.runtimeClass.getSimpleName
+
+    s"`$name1` is provided by `$name2`" - {
+      provided1 is provided2
+    }
+  }
 }

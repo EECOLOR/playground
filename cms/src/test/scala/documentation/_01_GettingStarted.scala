@@ -28,6 +28,7 @@ import testUtils.withFixedDateTime
 import testUtils.codeString
 import testUtils.testCmsMetadata
 import testUtils.testCmsMetadataJson
+import testUtils.moreInformation
 
 class _01_GettingStarted extends Specification with Example {
 

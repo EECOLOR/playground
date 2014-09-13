@@ -1,22 +1,25 @@
-package documentation
+package org.qirx.cms.elasticsearch
 
-import org.qirx.littlespec.Specification
-import org.qirx.cms.testing.MemoryIndex
-import play.api.libs.json.JsObject
-import play.api.libs.json.Json
-import org.qirx.cms.testing.TestFailure
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.JsValue
-import testUtils.PrettyPrint
 import org.qirx.cms.testing.IndexTester
+import org.qirx.cms.testing.TestFailure
+import org.qirx.littlespec.Specification
 
-class _07_01_Memory extends Specification {
+import play.api.libs.ws.WS
+import play.api.test.FakeApplication
+import play.api.test.Helpers
+import testUtils.PrettyPrint
 
-  "#The memory index should" - {
+class IndexSpec extends Specification {
+
+  "The ElasticSearch index should" - runningFakeApplication {
+    import play.api.libs.concurrent.Execution.Implicits.defaultContext
+    import play.api.Play.current
 
     val indexTester = new IndexTester[PrettyPrint]
 
-    val result = indexTester.test(new MemoryIndex)
+    val endpoint = "http://localhost:9200"
+
+    val result = indexTester.test(new Index(Seq.empty, endpoint, "test_index", WS.client))
 
     result.foreach {
       case (description, result) =>
@@ -41,4 +44,6 @@ class _07_01_Memory extends Specification {
 
     success
   }
+
+  def runningFakeApplication[T](block: => T): T = Helpers.running(FakeApplication())(block)
 }

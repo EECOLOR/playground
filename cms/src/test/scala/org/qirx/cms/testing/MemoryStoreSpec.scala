@@ -1,18 +1,13 @@
-package documentation
+package org.qirx.cms.testing
 
 import org.qirx.littlespec.Specification
-import org.qirx.cms.testing.StoreTester
-import org.qirx.cms.testing.MemoryStore
-import play.api.libs.json.JsObject
-import play.api.libs.json.Json
-import org.qirx.cms.testing.TestFailure
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.JsValue
+
 import testUtils.PrettyPrint
 
-class _06_01_Memory extends Specification {
+class MemoryStoreSpec extends Specification {
 
   "#The memory store should" - {
+    import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
     val storeTester = new StoreTester[PrettyPrint]
 

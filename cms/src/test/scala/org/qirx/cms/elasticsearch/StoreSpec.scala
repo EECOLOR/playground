@@ -1,30 +1,25 @@
-package documentation
+package org.qirx.cms.elasticsearch
 
-import org.qirx.littlespec.Specification
 import org.qirx.cms.testing.StoreTester
-import org.qirx.cms.testing.MemoryStore
-import play.api.libs.json.JsObject
-import play.api.libs.json.Json
 import org.qirx.cms.testing.TestFailure
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.JsValue
-import testUtils.PrettyPrint
-import java.net.URI
-import play.api.libs.ws.WS
-import play.api.Play.current
-import play.api.test.Helpers
-import play.api.test.FakeApplication
-import org.qirx.cms.elasticsearch
+import org.qirx.littlespec.Specification
 
-class _06_02_ElasticSearch extends Specification {
+import play.api.libs.ws.WS
+import play.api.test.FakeApplication
+import play.api.test.Helpers
+import testUtils.PrettyPrint
+
+class StoreSpec extends Specification {
 
   "#The ElasticSearch store should" - Helpers.running(FakeApplication()) {
+    import play.api.libs.concurrent.Execution.Implicits.defaultContext
+    import play.api.Play.current
 
     val storeTester = new StoreTester[PrettyPrint]
 
     val endpoint = "http://localhost:9200"
-    
-    val result = storeTester.test(new elasticsearch.Store(endpoint, "test_store", WS.client))
+
+    val result = storeTester.test(new Store(endpoint, "test_store", WS.client))
 
     result.foreach {
       case (description, result) =>

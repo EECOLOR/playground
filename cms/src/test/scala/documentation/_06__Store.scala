@@ -15,8 +15,10 @@ import play.api.libs.json.JsObject
 import org.qirx.cms.testing.TestResult
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import org.qirx.cms.testing.TypeclassMagnet
+import org.qirx.cms.elasticsearch
 
 class _06__Store extends Specification {
+
   "#The Store" - {
 
     val customStoreCode = codeString {
@@ -54,9 +56,19 @@ class _06__Store extends Specification {
         |$customStoreCode
         |```""".stripMargin - {
 
+      s"An in memory version is provide as `${classOf[MemoryStore].getName}`" - {
+        implicitly[MemoryStore <:< (Store ~> Future)]
+        success
+      }
+
+      s"An Elastic Search version is provide as `${classOf[elasticsearch.Store].getName}`" - {
+        implicitly[elasticsearch.Store <:< (Store ~> Future)]
+        success
+      }
+
       val customStore = new MemoryStore
 
-      """|To create a store implementation you can use the supplied `StoreTester`,
+      """|To create a custom store implementation you can use the supplied `StoreTester`,
          |it will check if the store behaves as expected.
          |
          |Some test frameworks work better when they have extra information about 
@@ -80,7 +92,7 @@ class _06__Store extends Specification {
                   case failure @ TestFailure(value, expectedValue) =>
                     // use the typeclass to get more information about the type
                     val none: TypeclassMagnet.None[_] = failure.typeclass
-                    // report failure using your favorite test framework
+                  // report failure using your favorite test framework
                 }
               )
           }

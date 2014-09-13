@@ -3,6 +3,7 @@ package documentation
 import scala.concurrent.Future
 
 import org.qirx.cms.construction.Index
+import org.qirx.cms.elasticsearch
 import org.qirx.cms.machinery.~>
 import org.qirx.cms.testing.IndexTester
 import org.qirx.cms.testing.MemoryIndex
@@ -13,8 +14,7 @@ import org.qirx.littlespec.Specification
 
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.JsObject
-import testUtils.cmsName
-import testUtils.codeString
+import testUtils._
 
 class _07__Index extends Specification {
 
@@ -48,9 +48,21 @@ class _07__Index extends Specification {
         |$customIndexCode
         |```""".stripMargin - {
 
+      s"An in memory version is provide as `${classOf[MemoryIndex].getName}`" - {
+        implicitly[MemoryIndex <:< (Index ~> Future)]
+        success
+      }
+
+      s"""|An Elastic Search version is provide as `${classOf[elasticsearch.Index].getName}`
+          |
+          |${moreInformation[_07_01_ElasticSearch]}""".stripMargin - {
+        implicitly[elasticsearch.Index <:< (Index ~> Future)]
+        success
+      }
+
       val customIndex = new MemoryIndex
 
-      """|To create an index implementation you can use the supplied `IndexTester`,
+      """|To create a custom index implementation you can use the supplied `IndexTester`,
          |it will check if the index behaves as expected.
          |
          |Note that this will not check your implementation of `Search` as this 
@@ -73,8 +85,8 @@ class _07__Index extends Specification {
                 onFailure = {
                   case failure @ TestFailure(value, expectedValue) =>
                     // use the typeclass to get more information about the type
-                    val none:TypeclassMagnet.None[_] = failure.typeclass
-                    // report failure using your favorite test framework
+                    val none: TypeclassMagnet.None[_] = failure.typeclass
+                  // report failure using your favorite test framework
                 }
               )
           }
