@@ -16,7 +16,7 @@ abstract class Property(val id: String) extends PropertyMetadata with PropertyVa
   def validate(messages: Messages, value: JsValue): Option[JsObject]
 
   def validate(messages: Messages, value: Option[JsValue]): Option[JsObject] =
-    value.map(validate(messages, _)) getOrElse Some(messageObj(messages, "required"))
+    value.map(validate(messages, _)) getOrElse Some(messageIdObj(messages, "required"))
 
   lazy val toJson = {
     val idObj = obj("id" -> id)

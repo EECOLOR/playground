@@ -164,7 +164,9 @@ class _03_Public_Api extends Specification with ApiExampleSpecification {
          |are not returned.""".stripMargin - example {
         val addSecret = obj("secret" -> "A secret about Article 2")
 
-        PATCH("/article/article_2") using addSecret
+        withFixedDateTime {
+          PATCH("/article/article_2") using addSecret
+        }
 
         val (status, body) = GET from "/article/article_2"
         status is 200

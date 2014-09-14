@@ -25,7 +25,7 @@ class GeneratedValueProperty[T <: PropertyMetadata with GeneratableValue](proper
         // implemented the checking as a side effect to keep the API simple
         val validationResults = property.validate(Messages, Some(generatedValue))
         validationResults.foreach { _ =>
-          sys.error(s"Generated value is invalid, value: $generatedValue\nvalidationResults: $validationResults")
+          sys.error(s"Generated value is invalid, value: $generatedValue\nvalidation results: $validationResults")
         }
 
         generatedValue
