@@ -30,7 +30,6 @@ class DocumentIndexer(
     for {
       documentMetadata <- GetMetadata
       meta <- documentMetadata.asProgram
-      _ <- Index.DeleteAll(meta.id) 
       documents <- Store.List(meta.id)
       document <- documents.asProgram
       id <- ExtractId(document)
