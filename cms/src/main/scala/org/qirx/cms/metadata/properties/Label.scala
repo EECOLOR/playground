@@ -8,16 +8,16 @@ import play.api.libs.json.JsString
 import play.api.libs.json.JsValue
 
 class Label(id: String) extends Property(id) {
-  
+
   lazy val extraJson = None
-  
-  def validate(messages:Messages, value: JsValue): Option[JsObject] =
+
+  protected def validate(messages: Messages, value: JsValue): Option[JsObject] =
     toType[JsString](value)
       .right.map(validateString(messages, _))
       .left.map(Option.apply)
       .merge
-      
-   def validateString(messages:Messages, value:JsString):Option[JsObject] =
-     nonEmpty(messages, value).left.toOption
+
+  protected def validateString(messages: Messages, value: JsString): Option[JsObject] =
+    nonEmpty(messages, value).left.toOption
 }
 object Label extends Label("label")

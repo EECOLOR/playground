@@ -10,14 +10,7 @@ import play.api.libs.json.JsValue
 import play.api.libs.json.Json.obj
 import play.api.libs.json.DefaultReads
 
-case class RichContentElement(name: String, attributes: Seq[String] = Seq.empty) {
-  private lazy val attributesString =
-    if (attributes.isEmpty) "" else attributes.mkString("[", "|", "]")
-
-  override def toString = name + attributesString
-}
-
-class RichContent(id: String, protected val allowedElements: Seq[RichContentElement])
+class RichContent(id: String, val allowedElements: Seq[RichContentElement])
   extends Property(id) {
 
   lazy val extraJson = Some(
@@ -27,7 +20,7 @@ class RichContent(id: String, protected val allowedElements: Seq[RichContentElem
   protected lazy val allowedElementsMap =
     allowedElements.map(e => e.name -> e.attributes.toSet).toMap
 
-  def validate(messages: Messages, value: JsValue): Option[JsObject] =
+  protected def validate(messages: Messages, value: JsValue): Option[JsObject] =
     toType[JsArray](value)
       .right.map(validateValues(messages, _))
       .left.map(Option.apply)
@@ -47,7 +40,7 @@ class RichContent(id: String, protected val allowedElements: Seq[RichContentElem
   }
 
   protected def incorrectElement(messages: Messages, value: JsValue) =
-    messageObj(messages, "incorrectElement", value.toString)
+    messageObj(messages, "invalidElement", value.toString)
 
   protected def validateObject(messages: Messages, value: JsObject): Option[JsObject] = {
     val element = (value \ "element").asOpt[String]
@@ -124,4 +117,11 @@ object RichContent extends RichContent("rich_content",
     
     extract(a.value).getOrElse("")
   }
+}
+
+case class RichContentElement(name: String, attributes: Seq[String] = Seq.empty) {
+  private lazy val attributesString =
+    if (attributes.isEmpty) "" else attributes.mkString("[", "|", "]")
+
+  override def toString = name + attributesString
 }

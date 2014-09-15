@@ -15,7 +15,7 @@ class Date(id: String) extends Property(id) with GeneratableValue {
   
   def generate: JsValue = IsoDate.writes writes DateTime.now
 
-  def validate(messages: Messages, value: JsValue): Option[JsObject] =
+  protected def validate(messages: Messages, value: JsValue): Option[JsObject] =
     toType[JsString](value)
       .right.map(validateDateString(messages, _))
       .left.map(Option.apply)

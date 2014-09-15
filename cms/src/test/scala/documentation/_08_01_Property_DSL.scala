@@ -1,22 +1,26 @@
 package documentation
 
-import org.qirx.littlespec.Specification
-import org.qirx.cms.metadata.dsl.Property
-import play.api.libs.json.JsValue
-import play.api.libs.json.JsObject
+import scala.util.Either.MergeableEither
+
 import org.qirx.cms.i18n.Messages
-import org.qirx.cms.metadata.dsl.OptionalValueProperty
-import scala.reflect.ClassTag
-import testUtils.Example
-import play.api.libs.json.Json.obj
-import play.api.libs.json.Json.arr
+import org.qirx.cms.metadata.dsl.Confidential
 import org.qirx.cms.metadata.dsl.GeneratableValue
 import org.qirx.cms.metadata.dsl.GeneratedValueProperty
-import play.api.libs.json.JsString
 import org.qirx.cms.metadata.dsl.Identifiable
-import org.qirx.cms.metadata.dsl.ValueSetProperty
+import org.qirx.cms.metadata.dsl.OptionalValueProperty
+import org.qirx.cms.metadata.dsl.Property
 import org.qirx.cms.metadata.dsl.PropertyValidation
-import org.qirx.cms.metadata.dsl.Confidential
+import org.qirx.cms.metadata.dsl.ValueSetProperty
+import org.qirx.littlespec.Specification
+
+import play.api.libs.json.JsObject
+import play.api.libs.json.JsString
+import play.api.libs.json.JsValue
+import play.api.libs.json.Json.arr
+import play.api.libs.json.Json.obj
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import testUtils.Example
+import testUtils.name
 
 class _08_01_Property_DSL extends Specification with Example {
 
@@ -60,7 +64,7 @@ class _08_01_Property_DSL extends Specification with Example {
       }
     }
 
-    s"""|##{name[PropertyValidation]}
+    s"""|##${name[PropertyValidation]}
         |
         |""".stripMargin - {}
 
@@ -253,6 +257,4 @@ class _08_01_Property_DSL extends Specification with Example {
       }
     }
   }
-
-  def name[C: ClassTag] = "`" + implicitly[ClassTag[C]].runtimeClass.getName + "`"
 }

@@ -15,7 +15,7 @@ object IsoDate {
   
   val reads = Reads {
     case JsString(value) =>
-      try JsSuccess(jodaDateTimeFormatter.parseDateTime(value))
+      try JsSuccess(jodaDateTimeFormatter parseDateTime value)
       catch {
         case e: IllegalArgumentException => JsError("Invalid date-time")
       }

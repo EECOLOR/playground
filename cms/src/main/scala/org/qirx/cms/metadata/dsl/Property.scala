@@ -13,7 +13,7 @@ abstract class Property(val id: String) extends PropertyMetadata with PropertyVa
 
   def ? = new OptionalValueProperty[this.type](this)
 
-  def validate(messages: Messages, value: JsValue): Option[JsObject]
+  protected def validate(messages: Messages, value: JsValue): Option[JsObject]
 
   def validate(messages: Messages, value: Option[JsValue]): Option[JsObject] =
     value.map(validate(messages, _)) getOrElse Some(messageIdObj(messages, "required"))
@@ -25,5 +25,5 @@ abstract class Property(val id: String) extends PropertyMetadata with PropertyVa
       .fold(ifEmpty = idObj)(idObj ++ _)
   }
 
-  def extraJson: Option[JsObject]
+  protected def extraJson: Option[JsObject]
 }

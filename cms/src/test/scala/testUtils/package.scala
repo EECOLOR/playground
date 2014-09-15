@@ -141,4 +141,6 @@ package object testUtils {
 
   def moreInformation[T: ClassTag] =
     s"For detailed information see ${link[T]}"
+  
+  def name[C: ClassTag] = "`" + implicitly[ClassTag[C]].runtimeClass.getName + "`"
 }
