@@ -25,7 +25,7 @@ class Tag(id: String, val pattern: String) extends Property(id) with Identifiabl
     nonEmpty(messages, value)
       .right.map {
         case JsString(value) if (value matches pattern) => None
-        case JsString(value) => Some(messageIdObj(messages, "invalidTag", value))
+        case JsString(value) => Some(messageIdObj(messages, "invalidTag", "`" + value + "`"))
       }
       .left.map(Option.apply)
       .merge

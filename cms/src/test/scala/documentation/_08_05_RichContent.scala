@@ -8,35 +8,94 @@ import org.qirx.cms.i18n.Messages
 import play.api.libs.json.JsValue
 import play.api.libs.json.JsString
 import org.qirx.cms.metadata.properties.RichContent
-import testUtils.ValidationResults
 import testUtils.Example
+import testUtils.inApp
 import play.api.libs.json.JsArray
 import org.qirx.cms.metadata.properties.RichContentElement
+import org.qirx.littlespec.fragments.Fragment
+import testUtils.TestApplication.fakeApplication
+import play.api.test.Helpers.running
 
-class _08_05_RichContent extends Specification with Example with ValidationResults {
+class _08_05_RichContent extends Specification with Example {
 
   s"""|#${name[RichContent]}
       |
       |The ${name[RichContent]} class is intended for rich html content.""".stripMargin - {
 
     val messages = Messages.withPrefix("testProperty")
-    val validate = RichContent.validate(messages, _: Option[JsValue])
+    def validate(json: Option[JsValue]) = inApp {
+      RichContent.validate(messages, json)
+    }
 
     "It has (by default) the id `rich_content`" - {
       RichContent.id is "rich_content"
     }
 
-    "It will not validate when no json is given" - {
-      validate(None) is Some(requiredResult("rich_content"))
+    "It will not validate when no json is given" - example {
+      validate(None) is Some(
+        obj(
+          "id" -> "rich_content",
+          "messageKey" -> "required",
+          "message" -> "The property is required"
+        )
+
+      )
     }
 
     "It will not validate if the type of property is not an array" - {
       val result = validate(Some(obj()))
-      result is Some(invalidTypeResult("rich_content"))
+      result is Some(
+        obj(
+          "id" -> "rich_content",
+          "error" -> "invalidType"
+        )
+      )
     }
 
     "It will validate when the array is empty" - {
       validate(Some(arr())) is None
+    }
+
+    """|It will not validate in the case of: 
+       |- An invalid structure
+       |- An element that is not allowed
+       |- An attribute that is not allowed""".stripMargin - example {
+      val result = validate(Some(
+        arr(
+          obj("element" -> "strong"),
+          obj("element" -> "h1"),
+          arr("incorrect element"),
+          obj("incorrect" -> "element"),
+          obj(
+            "element" -> "strong",
+            "attributes" -> obj("not_class" -> "value", "not" -> "")
+          )
+        )
+      ))
+
+      result is Some(
+        obj(
+          "id" -> "rich_content",
+          "errors" -> arr(
+            obj(
+              "messageKey" -> "elementNotAllowed",
+              "message" -> "The element `h1` is not allowed"
+            ),
+            obj(
+              "messageKey" -> "invalidElement",
+              "message" -> "The element `[\"incorrect element\"]` is invalid"
+            ),
+            obj(
+              "messageKey" -> "invalidElement",
+              "message" -> "The element `{\"incorrect\":\"element\"}` is invalid"
+            ),
+            obj(
+              "messageKey" -> "attributesNotAllowed",
+              "message" -> "The attribute(s) `not_class` and `not` is/are not allowed"
+            )
+          )
+        )
+      )
     }
 
     "It will validate when contents are correct" - {
@@ -68,12 +127,13 @@ class _08_05_RichContent extends Specification with Example with ValidationResul
       ))
     }.withSpecification { code =>
 
-      val result = code.CustomRichContent.validate(messages, Some(
-        arr(
-          obj("element" -> "strong"),
-          obj(),
-          obj("element" -> "p", "attributes" -> obj("not_class" -> "value")))
-      ))
+      val result = inApp {
+        code.CustomRichContent.validate(messages, Some(
+          arr(
+            obj("element" -> "strong")
+          )
+        ))
+      }
 
       result is Some(
         obj(
@@ -81,15 +141,7 @@ class _08_05_RichContent extends Specification with Example with ValidationResul
           "errors" -> arr(
             obj(
               "messageKey" -> "elementNotAllowed",
-              "message" -> "testProperty.elementNotAllowed"
-            ),
-            obj(
-              "messageKey" -> "invalidElement",
-              "message" -> "testProperty.invalidElement"
-            ),
-            obj(
-              "messageKey" -> "attributesNotAllowed",
-              "message" -> "testProperty.attributesNotAllowed"
+              "message" -> "The element `strong` is not allowed"
             )
           )
         )

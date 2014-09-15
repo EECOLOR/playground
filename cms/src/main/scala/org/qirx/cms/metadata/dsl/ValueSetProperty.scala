@@ -54,7 +54,7 @@ class ValueSetProperty[T <: PropertyMetadata with Identifiable](property: T, non
 
           val identity = property determineIdentityOf value
           if (identities contains identity) {
-            val error = index.toString -> messageObj(messages, "duplicateValue", identity)
+            val error = index.toString -> messageObj(messages, "duplicateValue", "`" + identity + "`")
             (identities, errors :+ error)
           } else (identities + identity, errors)
       }

@@ -21,7 +21,7 @@ trait ApiExampleSpecification extends Example { self: Specification =>
     val app = TestApplication(cms.value)
 
     val messages = {
-      val messagesUrl = app.classloader.getResource("conf/messages")
+      val messagesUrl = app.classloader.getResource("messages")
       Source.fromURL(messagesUrl).mkString
     }
 

@@ -21,6 +21,7 @@ import play.api.libs.json.Json.obj
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import testUtils.Example
 import testUtils.name
+import testUtils.inApp
 
 class _08_01_Property_DSL extends Specification with Example {
 
@@ -44,13 +45,16 @@ class _08_01_Property_DSL extends Specification with Example {
     }.withSpecification { code =>
       val MyProperty = code.MyProperty
 
+      def validate(json: Option[JsValue]) = inApp {
+        MyProperty.validate(messages, json)
+      }
+      
       "The `validate` method now reports an error when no value is given" - example {
-        val result = MyProperty.validate(messages, None)
-        result is Some(
+        validate(None) is Some(
           obj(
             "id" -> "testProperty",
             "messageKey" -> "required",
-            "message" -> "testProperty.required"
+            "message" -> "The property is required"
           )
         )
       }
@@ -110,6 +114,10 @@ class _08_01_Property_DSL extends Specification with Example {
     }.withSpecification { code =>
       val generatedProperty = code.generatedProperty
 
+      def validate(json: Option[JsValue]) = inApp {
+        generatedProperty.validate(messages, json)
+      }
+
       "This will provide a generator that will generate the property." - {
         val Some(generator) = generatedProperty.generator
         generator.generate("", obj()) is JsString("something")
@@ -136,8 +144,7 @@ class _08_01_Property_DSL extends Specification with Example {
       }
 
       "If the value is given, it will not validate".stripMargin - example {
-        val result = generatedProperty.validate(messages, Some(obj()))
-        result is Some(
+        validate(Some(obj())) is Some(
           obj(
             "id" -> "testProperty",
             "error" -> "generated"
@@ -177,12 +184,16 @@ class _08_01_Property_DSL extends Specification with Example {
     }.withSpecification { code =>
       val setProperty = code.setProperty
 
+      def validate(json: Option[JsValue]) = inApp {
+        setProperty.validate(messages, json)
+      }
+
       "Validation will not fail if no value is given." - {
-        setProperty.validate(messages, None) is None
+        validate(None) is None
       }
 
       "Validation will fail when the value is not an array" - example {
-        setProperty.validate(messages, Some(obj())) is Some(
+        validate(Some(obj())) is Some(
           obj(
             "id" -> "testProperty",
             "error" -> "invalidType"
@@ -192,8 +203,7 @@ class _08_01_Property_DSL extends Specification with Example {
 
       """|Validation will fail if any of the provided values do not pass
          |the property's validation""".stripMargin - example {
-        val result = setProperty.validate(messages, Some(arr("something", "nothing", "other")))
-        result is Some(
+        validate(Some(arr("something", "nothing", "other"))) is Some(
           obj(
             "id" -> "testProperty",
             "errors" -> obj(
@@ -205,13 +215,12 @@ class _08_01_Property_DSL extends Specification with Example {
       }
 
       "Validation will fail if any of the provided values has the same identity" - example {
-        val result = setProperty.validate(messages, Some(arr("something", "something")))
-        result is Some(
+        validate(Some(arr("something", "something"))) is Some(
           obj(
             "id" -> "testProperty",
             "errors" -> obj(
               "1" -> obj(
-                "message" -> "testProperty.duplicateValue",
+                "message" -> "The value `something` is present more than once",
                 "messageKey" -> "duplicateValue"
               )
             )

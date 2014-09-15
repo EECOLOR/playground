@@ -23,7 +23,7 @@ class Date(id: String) extends Property(id) with GeneratableValue {
 
   def validateDateString(messages: Messages, value: JsString): Option[JsObject] =
     value.validate(IsoDate.reads).fold(
-      invalid = _ => Some(messageIdObj(messages, "invalidDate", value.value)),
+      invalid = _ => Some(messageIdObj(messages, "invalidDate", "`" + value.value + "`")),
       valid = _ => None
     )
 

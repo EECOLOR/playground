@@ -1,0 +1,8 @@
+required=The property is required
+empty=The property may not be empty
+invalidElement=The element {0} is invalid
+elementNotAllowed=The element {0} is not allowed
+attributesNotAllowed=The attribute(s) {0} is/are not allowed
+invalidTag=The tag {0} contains invalid characters
+invalidDate=The date {0} is invalid
+duplicateValue=The value {0} is present more than once

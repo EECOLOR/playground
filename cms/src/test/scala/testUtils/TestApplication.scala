@@ -12,7 +12,6 @@ object TestApplication {
     new FakeApplication(
       withGlobal = global,
       additionalConfiguration = Map(
-        "messages.path" -> "conf",
         "logger.root" -> "ERROR"
       ))
 

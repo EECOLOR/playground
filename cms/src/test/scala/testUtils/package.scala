@@ -15,6 +15,7 @@ import play.api.libs.json.Json.arr
 import org.qirx.littlespec.fragments.Code
 import scala.reflect.ClassTag
 import org.qirx.littlespec.reporter.MarkdownReporter
+import play.api.test.Helpers
 
 package object testUtils {
   val cmsName = classOf[Cms].getSimpleName
@@ -54,11 +55,11 @@ package object testUtils {
   def rawCodeString[T](code: => T)(implicit location: Location) =
     new CodeString(code, Source.codeAtLocation(location).text)
 
-  def testCms(testEnvironment:TestEnvironment) = {
+  def testCms(testEnvironment: TestEnvironment) = {
     val raw =
       rawCodeString {
         val article = testCmsMetadata.value
-      
+
         new Cms(
           pathPrefix = "/api",
           authenticate = { _ => Future.successful(true) },
@@ -111,7 +112,10 @@ package object testUtils {
           "id" -> "tag",
           "name" -> "tags",
           "set" -> true,
-          "nonEmpty" -> false
+          "nonEmpty" -> false,
+          "extra" -> obj(
+            "pattern" -> "[a-zA-Z0-9_-]+"
+          )
         ),
         obj(
           "id" -> "date",
@@ -126,7 +130,7 @@ package object testUtils {
       )
     )
   }
-  
+
   def link[T: ClassTag] = {
     val fullyQualifiedName = implicitly[ClassTag[T]].runtimeClass.getName
 
@@ -141,6 +145,8 @@ package object testUtils {
 
   def moreInformation[T: ClassTag] =
     s"For detailed information see ${link[T]}"
-  
+
   def name[C: ClassTag] = "`" + implicitly[ClassTag[C]].runtimeClass.getName + "`"
+
+  def inApp[T](code: => T) = Helpers.running(TestApplication.fakeApplication())(code)
 }

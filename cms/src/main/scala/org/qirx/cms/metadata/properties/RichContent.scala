@@ -40,7 +40,7 @@ class RichContent(id: String, val allowedElements: Seq[RichContentElement])
   }
 
   protected def incorrectElement(messages: Messages, value: JsValue) =
-    messageObj(messages, "invalidElement", value.toString)
+    messageObj(messages, "invalidElement", "`" + value.toString + "`")
 
   protected def validateObject(messages: Messages, value: JsObject): Option[JsObject] = {
     val element = (value \ "element").asOpt[String]
@@ -79,10 +79,10 @@ class RichContent(id: String, val allowedElements: Seq[RichContentElement])
   }
 
   protected def elementNotAllowed(messages: Messages, element: String) =
-    messageObj(messages, "elementNotAllowed", element)
+    messageObj(messages, "elementNotAllowed", "`" + element + "`")
 
   protected def attributesNotAllowed(messages: Messages, attributes: Set[String]) =
-    messageObj(messages, "attributesNotAllowed", attributes mkString ", ")
+    messageObj(messages, "attributesNotAllowed", attributes.mkString("`", "` and `", "`"))
 
 }
 
